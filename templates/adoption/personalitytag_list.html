@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><h1>Personality Tags</h1><a class="button primary" href="{% url 'tag-create' %}">Add Tag</a></div>
+<div class="list">{% for tag in object_list %}<article class="row-card" style="display: flex; justify-content: space-between; align-items: center;"><span>{{ tag.name }}</span><span style="display: flex; gap: 10px;"><a href="{% url 'tag-update' tag.pk %}">Edit</a> <a href="{% url 'tag-delete' tag.pk %}">Delete</a></span></article>{% empty %}<p>No tags yet.</p>{% endfor %}</div>
+{% endblock %}

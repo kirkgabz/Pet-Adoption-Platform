@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Users</h1>
+<div class="list">{% for account in object_list %}<article class="row-card"><span>{{ account.username }} • {{ account.email }}</span><span><a href="{% url 'user-update' account.pk %}">Edit</a> <a href="{% url 'user-delete' account.pk %}">Delete</a></span></article>{% endfor %}</div>
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Adoption Application{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>Apply to Adopt {{ pet.name }}</h1>
+  <form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary">Submit Application</button></form>
+</section>
+{% endblock %}

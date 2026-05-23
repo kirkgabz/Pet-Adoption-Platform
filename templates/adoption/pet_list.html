@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Adoption Dashboard{% endblock %}
+{% block content %}
+<section class="dashboard">
+  <div class="dashboard-main">
+    <header class="dash-header">
+      <div>
+        <p class="eyebrow">Dashboard</p>
+        <h1>Welcome back{% if user.is_authenticated %}, {{ user.first_name|default:user.username }}{% endif %}</h1>
+      </div>
+      <form class="dash-search" method="get">
+        <input name="q" placeholder="Search pets, breeds, notes" value="{{ request.GET.q }}">
+        <button>Search</button>
+      </form>
+      <div class="dash-actions">
+        <a class="button primary" href="{% url 'pet-create' %}">Post Pet</a>
+      </div>
+      <div class="header-meta-box">
+        <div style="font-size:12px;color:var(--muted);">{{ current_date|date:"l, F j, Y" }}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          {% if weather_icon %}
+            <img src="https://openweathermap.org/img/wn/{{ weather_icon }}@2x.png" alt="{{ weather_desc }}" style="width:24px;height:24px;vertical-align:middle;">
+          {% endif %}
+          <div id="temp-display">{% if current_temp is not None %}{{ current_temp }}°C{% else %}—°C{% endif %}</div>
+          <div style="font-size:12px;color:var(--muted);">&nbsp;|&nbsp;<a href="#" id="toggle-unit">°F</a></div>
+        </div>
+      </div>
+    </header>
+
+    <section class="hero-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">Featured adoption</p>
+        {% if featured_pet %}
+          <h2>Meet {{ featured_pet.name }}</h2>
+          <p>{{ featured_pet.get_species_display }}{% if featured_pet.breed %} / {{ featured_pet.breed }}{% endif %} / {{ featured_pet.age }} years old</p>
+          <div class="tags">
+            {% for tag in featured_pet.personality_tags.all %}<span>{{ tag.name }}</span>{% empty %}<span>Ready for a family</span>{% endfor %}
+          </div>
+          <a class="button primary" href="{{ featured_pet.get_absolute_url }}">View Profile</a>
+        {% else %}
+          <h2>Start building your adoption board</h2>
+          <p>Add shelters, post pets, and track every application from one calm dashboard.</p>
+          <a class="button primary" href="{% url 'pet-create' %}">Post First Pet</a>
+        {% endif %}
+      </div>
+      <div class="hero-pet">
+        {% if featured_pet.photo %}
+          <img src="{{ featured_pet.photo.url }}" alt="{{ featured_pet.name }}">
+        {% else %}
+          {% load static %}
+          <img class="hero-illustration" src="{% static 'img/dog-cutout.png' %}" alt="Adoptable dog">
+        {% endif %}
+      </div>
+      <div class="profile-float">
+        <div class="mini-avatar">{% if featured_pet %}{{ featured_pet.name|first|upper }}{% else %}P{% endif %}</div>
+        <div>
+          <strong>{% if featured_pet %}{{ featured_pet.name }}{% else %}New pet{% endif %}</strong>
+          <small>{% if featured_pet %}{{ featured_pet.shelter.name }}{% else %}Awaiting profile{% endif %}</small>
+        </div>
+      </div>
+    </section>
+
+    <form class="filters dashboard-filters" method="get">
+      <select class="field" name="species">
+        <option value="">All species</option>
+        {% for value,label in species_choices %}<option value="{{ value }}" {% if request.GET.species == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <select class="field" name="status">
+        <option value="">All statuses</option>
+        {% for value,label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <select class="field" name="tag">
+        <option value="">Any personality</option>
+        {% for tag in tags %}<option value="{{ tag.id }}" {% if request.GET.tag == tag.id|stringformat:"s" %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
+      </select>
+      <button>Filter</button>
+    </form>
+
+    <div class="dashboard-panels">
+      <section class="panel-card">
+        <div class="panel-title">
+          <h2>Available Pets</h2>
+          <a href="{% url 'pet-create' %}">Add</a>
+        </div>
+        <div class="pet-table">
+          {% for pet in object_list %}
+            <a class="pet-row" href="{{ pet.get_absolute_url }}">
+              {% if pet.photo %}<img src="{{ pet.photo.url }}" alt="{{ pet.name }}" data-species="{{ pet.species }}" class="pet-image">{% else %}<span class="pet-thumb">{{ pet.name|first|upper }}</span>{% endif %}
+              <span>
+                <strong>{{ pet.name }}</strong>
+                <small>{{ pet.get_species_display }}{% if pet.breed %} / {{ pet.breed }}{% endif %}</small>
+              </span>
+              <em>{{ pet.get_status_display }}</em>
+            </a>
+          {% empty %}
+            <p class="muted">No pets match your filters yet.</p>
+          {% endfor %}
+        </div>
+        {% include "adoption/partials/pagination.html" %}
+      </section>
+
+      <section class="panel-card">
+        <div class="panel-title">
+          <h2>Recent Applications</h2>
+          <a href="{% url 'application-list' %}">View all</a>
+        </div>
+        <div class="timeline-list">
+          {% for application in recent_applications %}
+            <a href="{{ application.get_absolute_url }}" class="timeline-item">
+              <span></span>
+              <div>
+                <strong>{{ application.pet.name }}</strong>
+                <small>{{ application.applicant.username }} / {{ application.get_status_display }}</small>
+              </div>
+            </a>
+          {% empty %}
+            <p class="muted">Applications will appear here once adopters apply.</p>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <aside class="dashboard-side">
+    <section class="metric-card">
+      <p class="eyebrow">Adoption Progress</p>
+      <div class="ring" style="--value: {{ pet_counts.available|default:0 }};">
+        <strong>{{ pet_counts.available }}</strong>
+        <span>Available</span>
+      </div>
+      <div class="mini-metrics">
+        <div><strong>{{ pet_counts.total }}</strong><span>Total pets</span></div>
+        <div><strong>{{ pet_counts.pending }}</strong><span>Pending</span></div>
+        <div><strong>{{ pet_counts.adopted }}</strong><span>Adopted</span></div>
+      </div>
+    </section>
+
+    <section class="tip-card">
+      <p class="eyebrow">Daily Tip</p>
+      <h2>Strong profiles get better matches.</h2>
+      <p>Add clear photos, personality tags, and honest care notes so adopters know what life with each pet feels like.</p>
+    </section>
+
+    <section class="stat-stack">
+      <div>
+        <strong>{{ shelter_count }}</strong>
+        <span>Shelters</span>
+      </div>
+      <div>
+        <strong>{{ application_counts.submitted|default:0 }}</strong>
+        <span>New applications</span>
+      </div>
+      <div>
+        <strong>{{ application_counts.approved|default:0 }}</strong>
+        <span>Approved</span>
+      </div>
+    </section>
+  </aside>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function(){
+    const toggle = document.getElementById('toggle-unit');
+    const disp = document.getElementById('temp-display');
+    if(!toggle || !disp) return;
+    let showingC = true;
+    const c = {% if current_temp is not None %}{{ current_temp }}{% else %}null{% endif %};
+    const f = {% if current_temp_f is not None %}{{ current_temp_f }}{% else %}null{% endif %};
+    toggle.addEventListener('click', function(e){
+      e.preventDefault();
+      if(showingC){
+        if(f !== null){ disp.textContent = f + '°F'; showingC = false; toggle.textContent = '°C'; }
+      } else {
+        if(c !== null){ disp.textContent = c + '°C'; showingC = true; toggle.textContent = '°F'; }
+      }
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Pet Adoption{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/site.css' %}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="{% url 'pet-list' %}">
+        <img class="brand-logo" src="{% static 'img/pet-adoption-logo-transparent.png' %}" alt="Pet Adoption Logo">
+        <span>Pet Adoption</span>
+      </a>
+      <nav class="side-nav">
+        <a href="{% url 'pet-list' %}" class="active">Dashboard</a>
+        <a href="{% url 'pet-create' %}">Post Pet</a>
+        <a href="{% url 'shelter-list' %}">Shelters</a>
+        <a href="{% url 'nearby-shelters' %}">Nearby Shelters</a>
+        <a href="{% url 'application-list' %}">Applications</a>
+        <a href="{% url 'tag-list' %}">Personality Tags</a>
+        {% if user.is_staff %}<a href="{% url 'user-list' %}">Users</a>{% endif %}
+      </nav>
+      <div class="sidebar-card">
+        <div class="avatar">{{ user.username|default:"G"|first|upper }}</div>
+        <div>
+          <strong>{% if user.is_authenticated %}{{ user.username }}{% else %}Guest User{% endif %}</strong>
+          <small>{% if user.is_staff %}Shelter Staff{% elif user.is_authenticated %}Adopter{% else %}Visitor{% endif %}</small>
+        </div>
+      </div>
+      <div class="sidebar-actions">
+        {% if user.is_authenticated %}
+          <form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Logout</button></form>
+        {% else %}
+          <a class="button primary" href="{% url 'login' %}">Login</a>
+          <a class="button" href="{% url 'register' %}">Register</a>
+        {% endif %}
+      </div>
+    </aside>
+    <main class="main-stage">
+      {% for message in messages %}
+        <div class="notice {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+
+      <!-- Top user card: visible when sidebar is hidden (auth/landing) or on small screens -->
+      <div class="top-user-card">
+        <div class="sidebar-card">
+          <div class="avatar">{{ user.username|default:"G"|first|upper }}</div>
+          <div>
+            <strong>{% if user.is_authenticated %}{{ user.username }}{% else %}Guest User{% endif %}</strong>
+            <small>{% if user.is_staff %}Shelter Staff{% elif user.is_authenticated %}Adopter{% else %}Visitor{% endif %}</small>
+          </div>
+        </div>
+        <div class="sidebar-actions">
+          {% if user.is_authenticated %}
+            <form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Logout</button></form>
+          {% else %}
+            <a class="button primary" href="{% url 'login' %}">Login</a>
+            <a class="button" href="{% url 'register' %}">Register</a>
+          {% endif %}
+        </div>
+      </div>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script>
+    (function(){
+      function openZoom(src, alt){
+        const overlay = document.createElement('div');
+        overlay.className = 'img-zoom-overlay';
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = alt || '';
+        overlay.appendChild(img);
+        overlay.addEventListener('click', function(){ overlay.remove(); });
+        document.body.appendChild(overlay);
+        requestAnimationFrame(()=> overlay.classList.add('show'));
+      }
+
+      document.addEventListener('click', function(e){
+        const img = e.target.closest && e.target.closest('img.pet-image');
+        if(!img) return;
+        try{
+          if(img.dataset && img.dataset.species === 'cat'){
+            e.preventDefault();
+            openZoom(img.src, img.alt);
+          }
+        }catch(err){/* ignore */}
+      });
+
+      document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape'){
+          const o = document.querySelector('.img-zoom-overlay');
+          if(o) o.remove();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

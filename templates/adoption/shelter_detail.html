@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ object.name }}{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="split"><h1>{{ object.name }}</h1><div><a class="button" href="{% url 'shelter-update' object.pk %}">Edit</a> <a class="button danger" href="{% url 'shelter-delete' object.pk %}">Delete</a></div></div>
+  <p>{{ object.description }}</p>
+  <p><strong>Address:</strong> {{ object.address }}, {{ object.city }}</p>
+  <p><strong>Contact:</strong> {{ object.email }} {{ object.phone }}</p>
+  <h2>Pets</h2>
+  <div class="list">{% for pet in object.pets.all %}<a href="{{ pet.get_absolute_url }}">{{ pet.name }} - {{ pet.get_status_display }}</a>{% empty %}<p>No pets posted yet.</p>{% endfor %}</div>
+</section>
+{% endblock %}

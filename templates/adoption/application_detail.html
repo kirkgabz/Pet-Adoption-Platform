@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Application{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="split"><h1>{{ application.pet.name }} Application</h1><span class="status">{{ application.get_status_display }}</span></div>
+  <p><strong>Applicant:</strong> {{ application.applicant.get_full_name|default:application.applicant.username }}</p>
+  <p><strong>Home:</strong> {{ application.home_type }}{% if application.has_yard %}, has yard{% endif %}</p>
+  <p><strong>Experience:</strong> {{ application.experience }}</p>
+  <p><strong>Reason:</strong> {{ application.reason }}</p>
+  {% if user.is_staff %}
+    <form class="filters" method="post">{% csrf_token %}{{ status_form.status }}<button>Update Status</button></form>
+  {% endif %}
+  <h2>Messages</h2>
+  <div class="messages">
+    {% for message in conversation %}
+      <div class="message {% if message.sender == user %}mine{% endif %}">
+        <strong>{{ message.sender.username }}</strong>
+        <p>{{ message.body }}</p>
+        <small>{{ message.created_at }}</small>
+      </div>
+    {% empty %}<p>No messages yet.</p>{% endfor %}
+  </div>
+  <form method="post">{% csrf_token %}{{ message_form.as_p }}<button class="primary">Send</button></form>
+  <div class="actions">
+    {% if user.is_staff %}<a class="button" href="{% url 'application-update' application.pk %}">Edit Status</a>{% endif %}
+    <a class="button danger" href="{% url 'application-delete' application.pk %}">Delete</a>
+  </div>
+</section>
+{% endblock %}

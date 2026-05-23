@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Register{% endblock %}
+{% block body_class %}auth-layout{% endblock %}
+{% block content %}
+<section class="auth-page">
+  <div class="auth-visual">
+    <div class="auth-brand">
+      <img src="{% static 'img/pet-adoption-logo-transparent.png' %}" alt="Pet Adoption Logo">
+      <strong>Pet Adoption</strong>
+    </div>
+    <p class="eyebrow">Sign Up</p>
+    <h1>Join the adoption circle.</h1>
+    <p>Create your account to meet adoptable pets, connect with shelters, send applications, and follow each adoption step with care.</p>
+  </div>
+  <div class="auth-card-wrap dog-card">
+    <img class="auth-mascot dog" src="{% static 'img/dog-signup.svg' %}" alt="Cute dog">
+    <form class="auth-card" method="post">
+      {% csrf_token %}
+      <h2>Create Account</h2>
+      {{ form.as_p }}
+      <button class="primary">Sign Up</button>
+      <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Login</a></p>
+    </form>
+  </div>
+</section>
+{% endblock %}

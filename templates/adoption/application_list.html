@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Applications{% endblock %}
+{% block content %}
+<h1>Applications</h1>
+<div class="list">
+  {% for application in object_list %}
+    <article class="row-card">
+      <div><h2><a href="{{ application.get_absolute_url }}">{{ application.pet.name }}</a></h2><p>{{ application.applicant.username }} • {{ application.pet.shelter.name }}</p></div>
+      <span class="status">{{ application.get_status_display }}</span>
+    </article>
+  {% empty %}<p>No applications yet.</p>{% endfor %}
+</div>
+{% include "adoption/partials/pagination.html" %}
+{% endblock %}

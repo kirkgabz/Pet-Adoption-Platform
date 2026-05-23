@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Nearby Shelters{% endblock %}
+{% block content %}
+<section class="panel">
+  <h1>Nearby Shelters</h1>
+  <form class="filters" method="get">
+    <input class="field" name="lat" placeholder="Latitude" value="{{ latitude }}">
+    <input class="field" name="lng" placeholder="Longitude" value="{{ longitude }}">
+    <input class="field" name="radius" placeholder="Radius km" value="{{ radius }}">
+    <button>Find</button>
+  </form>
+  <div class="list">
+    {% for shelter,distance in results %}
+      <article class="row-card"><a href="{{ shelter.get_absolute_url }}">{{ shelter.name }}</a><span>{{ distance|floatformat:1 }} km away</span></article>
+    {% empty %}
+      <p>Enter coordinates to find shelters with saved locations.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

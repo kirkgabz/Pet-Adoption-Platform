@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ object.name }}{% endblock %}
+{% block content %}
+<article class="detail">
+  {% if object.photo %}<img class="detail-img" src="{{ object.photo.url }}" alt="{{ object.name }}">{% endif %}
+  <div>
+    <div class="split">
+      <h1>{{ object.name }}</h1>
+      <span class="status">{{ object.get_status_display }}</span>
+    </div>
+    <p class="lead">{{ object.get_species_display }}{% if object.breed %} • {{ object.breed }}{% endif %} • {{ object.age }} years</p>
+    <p>{{ object.description }}</p>
+    <div class="tags">{% for tag in object.personality_tags.all %}<span>{{ tag.name }}</span>{% endfor %}</div>
+    <p><strong>Shelter:</strong> <a href="{{ object.shelter.get_absolute_url }}">{{ object.shelter.name }}</a></p>
+    <div class="actions">
+      <a class="button primary" href="{% url 'application-create' object.pk %}">Apply to Adopt</a>
+      <a class="button" href="{% url 'pet-update' object.pk %}">Edit</a>
+      <a class="button danger" href="{% url 'pet-delete' object.pk %}">Delete</a>
+    </div>
+  </div>
+</article>
+{% endblock %}

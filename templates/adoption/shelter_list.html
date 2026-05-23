@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Shelters{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Shelters</h1><a class="button primary" href="{% url 'shelter-create' %}">Add Shelter</a></div>
+<form class="filters" method="get"><input class="field" name="q" placeholder="Search shelter or city" value="{{ request.GET.q }}"><button>Search</button></form>
+<div class="list">
+  {% for shelter in object_list %}
+    <article class="row-card">
+      <div><h2><a href="{{ shelter.get_absolute_url }}">{{ shelter.name }}</a></h2><p>{{ shelter.address }}, {{ shelter.city }}</p></div>
+      <span>{{ shelter.email }}</span>
+    </article>
+  {% empty %}<p>No shelters found.</p>{% endfor %}
+</div>
+{% include "adoption/partials/pagination.html" %}
+{% endblock %}

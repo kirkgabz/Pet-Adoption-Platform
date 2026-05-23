@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel narrow">
+  <h1>Delete {{ object.name }}?</h1>
+  <form method="post">{% csrf_token %}<button class="danger">Delete</button> <a class="button" href="{{ object.get_absolute_url }}">Cancel</a></form>
+</section>
+{% endblock %}
