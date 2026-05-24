@@ -1,7 +1,9 @@
 from django.contrib import messages
 from django.contrib.auth import login
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User
+from django.contrib.auth.views import LoginView
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -31,13 +33,36 @@ except Exception:
 from .models import AdoptionApplication, ConversationMessage, Pet, PersonalityTag, Shelter
 
 
-class StaffRequiredMixin(UserPassesTestMixin):
+class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = 'login'
+
     def test_func(self):
         return self.request.user.is_staff
 
 
 class LandingView(TemplateView):
     template_name = "adoption/landing.html"
+
+
+class RoleBasedLoginView(LoginView):
+    template_name = "registration/login.html"
+    authentication_form = AuthenticationForm
+
+    def form_valid(self, form):
+        role = self.request.POST.get("login_role", "user")
+        user = form.get_user()
+        if role == "staff" and not user.is_staff:
+            form.add_error(None, "Please log in with a shelter staff account.")
+            return self.form_invalid(form)
+        if role == "user" and user.is_staff:
+            form.add_error(None, "This is a shelter staff account. Choose Shelter Staff Login.")
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["login_role"] = self.request.GET.get("role", "user")
+        return context
 
 
 class PetListView(LoginRequiredMixin, ListView):
@@ -101,6 +126,12 @@ class PetListView(LoginRequiredMixin, ListView):
         context["current_temp_f"] = None
         context["weather_icon"] = None
         context["weather_desc"] = None
+        context["available_pets"] = (
+            Pet.objects.select_related("shelter")
+            .prefetch_related("personality_tags")
+            .filter(status=Pet.Status.AVAILABLE)
+            .order_by("-created_at")[:5]
+        )
         api_key = getattr(settings, "OPENWEATHER_API_KEY", None) or os.environ.get("OPENWEATHER_API_KEY")
         city = None
         first_shelter = Shelter.objects.first()
@@ -165,6 +196,34 @@ class PetDetailView(DetailView):
         return Pet.objects.select_related("shelter", "posted_by").prefetch_related("personality_tags")
 
 
+class AvailablePetsView(LoginRequiredMixin, ListView):
+    model = Pet
+    template_name = "adoption/available_pets.html"
+    paginate_by = 12
+    context_object_name = "object_list"
+
+    def get_queryset(self):
+        queryset = Pet.objects.select_related("shelter").prefetch_related("personality_tags").filter(status=Pet.Status.AVAILABLE)
+        query = self.request.GET.get("q")
+        species = self.request.GET.get("species")
+        tag = self.request.GET.get("tag")
+        if query:
+            queryset = queryset.filter(
+                Q(name__icontains=query) | Q(breed__icontains=query) | Q(description__icontains=query)
+            )
+        if species:
+            queryset = queryset.filter(species=species)
+        if tag:
+            queryset = queryset.filter(personality_tags__id=tag)
+        return queryset.distinct().order_by('?')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["species_choices"] = Pet.Species.choices
+        context["tags"] = PersonalityTag.objects.all()
+        return context
+
+
 class PetCreateView(LoginRequiredMixin, CreateView):
     model = Pet
     form_class = PetForm
@@ -175,12 +234,18 @@ class PetCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class PetUpdateView(LoginRequiredMixin, UpdateView):
+class PetOwnershipMixin(LoginRequiredMixin, UserPassesTestMixin):
+    def test_func(self):
+        pet = self.get_object()
+        return self.request.user.is_staff or pet.posted_by == self.request.user
+
+
+class PetUpdateView(StaffRequiredMixin, UpdateView):
     model = Pet
     form_class = PetForm
 
 
-class PetDeleteView(LoginRequiredMixin, DeleteView):
+class PetDeleteView(PetOwnershipMixin, DeleteView):
     model = Pet
     success_url = reverse_lazy("pet-list")
 
@@ -201,17 +266,17 @@ class ShelterDetailView(DetailView):
     model = Shelter
 
 
-class ShelterCreateView(LoginRequiredMixin, CreateView):
+class ShelterCreateView(StaffRequiredMixin, CreateView):
     model = Shelter
     form_class = ShelterForm
 
 
-class ShelterUpdateView(LoginRequiredMixin, UpdateView):
+class ShelterUpdateView(StaffRequiredMixin, UpdateView):
     model = Shelter
     form_class = ShelterForm
 
 
-class ShelterDeleteView(LoginRequiredMixin, DeleteView):
+class ShelterDeleteView(StaffRequiredMixin, DeleteView):
     model = Shelter
     success_url = reverse_lazy("shelter-list")
 
@@ -253,19 +318,19 @@ class TagListView(ListView):
     model = PersonalityTag
 
 
-class TagCreateView(LoginRequiredMixin, CreateView):
+class TagCreateView(StaffRequiredMixin, CreateView):
     model = PersonalityTag
     form_class = PersonalityTagForm
     success_url = reverse_lazy("tag-list")
 
 
-class TagUpdateView(LoginRequiredMixin, UpdateView):
+class TagUpdateView(StaffRequiredMixin, UpdateView):
     model = PersonalityTag
     form_class = PersonalityTagForm
     success_url = reverse_lazy("tag-list")
 
 
-class TagDeleteView(LoginRequiredMixin, DeleteView):
+class TagDeleteView(StaffRequiredMixin, DeleteView):
     model = PersonalityTag
     success_url = reverse_lazy("tag-list")
 
@@ -307,6 +372,9 @@ def apply_to_adopt(request, pk):
         messages.info(request, "Please log in before applying to adopt.")
         return redirect(f"{reverse('login')}?next={request.path}")
     existing_application = AdoptionApplication.objects.filter(pet=pet, applicant=request.user).first()
+    if pet.posted_by == request.user:
+        messages.error(request, "You cannot apply to adopt your own listed pet.")
+        return redirect(pet)
     if existing_application:
         messages.info(request, "You already have an application for this pet.")
         return redirect(existing_application)
@@ -387,7 +455,7 @@ def nearby_shelters(request):
         radius = float(request.GET.get("radius") or 25)
     except (TypeError, ValueError):
         radius = 25.0
-    shelters = Shelter.objects.exclude(latitude__isnull=True).exclude(longitude__isnull=True)
+    shelters = Shelter.objects.prefetch_related("pets").exclude(latitude__isnull=True).exclude(longitude__isnull=True)
     results = []
     if latitude and longitude:
         try:
@@ -407,8 +475,9 @@ def nearby_shelters(request):
             except Exception:
                 distance = None
             if distance is not None and distance <= radius:
-                results.append((shelter, distance))
-        results.sort(key=lambda item: item[1])
+                available_count = shelter.pets.filter(status=Pet.Status.AVAILABLE).count()
+                results.append({"shelter": shelter, "distance": distance, "available_count": available_count})
+        results.sort(key=lambda item: item["distance"])
     return render(
         request,
         "adoption/nearby_shelters.html",

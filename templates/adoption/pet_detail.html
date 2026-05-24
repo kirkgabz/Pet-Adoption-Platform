@@ -13,9 +13,17 @@
     <div class="tags">{% for tag in object.personality_tags.all %}<span>{{ tag.name }}</span>{% endfor %}</div>
     <p><strong>Shelter:</strong> <a href="{{ object.shelter.get_absolute_url }}">{{ object.shelter.name }}</a></p>
     <div class="actions">
-      <a class="button primary" href="{% url 'application-create' object.pk %}">Apply to Adopt</a>
-      <a class="button" href="{% url 'pet-update' object.pk %}">Edit</a>
-      <a class="button danger" href="{% url 'pet-delete' object.pk %}">Delete</a>
+      {% if user.is_authenticated and object.posted_by != user and object.status == 'available' %}
+        <a class="button primary" href="{% url 'application-create' object.pk %}">Apply to Adopt</a>
+      {% elif object.posted_by == user %}
+        <span class="note">You cannot apply to your own pet listing.</span>
+      {% endif %}
+      {% if user.is_staff %}
+        <a class="button" href="{% url 'pet-update' object.pk %}">Edit</a>
+      {% endif %}
+      {% if user.is_staff or object.posted_by == user %}
+        <a class="button danger" href="{% url 'pet-delete' object.pk %}">Delete</a>
+      {% endif %}
     </div>
   </div>
 </article>

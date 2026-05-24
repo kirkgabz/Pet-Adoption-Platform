@@ -1,20 +1,148 @@
 {% extends "base.html" %}
-{% block title %}Nearby Shelters{% endblock %}
+{% block title %}Find Nearby Shelters{% endblock %}
 {% block content %}
-<section class="panel">
-  <h1>Nearby Shelters</h1>
-  <form class="filters" method="get">
-    <input class="field" name="lat" placeholder="Latitude" value="{{ latitude }}">
-    <input class="field" name="lng" placeholder="Longitude" value="{{ longitude }}">
-    <input class="field" name="radius" placeholder="Radius km" value="{{ radius }}">
-    <button>Find</button>
-  </form>
-  <div class="list">
-    {% for shelter,distance in results %}
-      <article class="row-card"><a href="{{ shelter.get_absolute_url }}">{{ shelter.name }}</a><span>{{ distance|floatformat:1 }} km away</span></article>
-    {% empty %}
-      <p>Enter coordinates to find shelters with saved locations.</p>
-    {% endfor %}
+<section class="nearby-shelters-container">
+  <header class="nearby-header">
+    <div class="nearby-header-content">
+      <h1>Find Nearby Shelters</h1>
+      <p>Discover animal shelters in your area and see available pets</p>
+    </div>
+  </header>
+
+  <div class="nearby-search-section">
+    <form class="nearby-search-form" method="get" id="searchForm">
+      <div class="search-inputs">
+        <div class="input-group">
+          <label for="latitude">Latitude</label>
+          <input class="field" id="latitude" name="lat" type="number" step="0.0001" placeholder="e.g. 14.5995" value="{{ latitude }}" required>
+        </div>
+        <div class="input-group">
+          <label for="longitude">Longitude</label>
+          <input class="field" id="longitude" name="lng" type="number" step="0.0001" placeholder="e.g. 120.9842" value="{{ longitude }}" required>
+        </div>
+        <div class="input-group">
+          <label for="radius">Search Radius (km)</label>
+          <input class="field" id="radius" name="radius" type="number" step="0.1" min="1" placeholder="25 km" value="{{ radius }}">
+        </div>
+      </div>
+      <div class="search-actions">
+        <button type="submit" class="button primary">Search</button>
+        <button type="button" class="button secondary" id="geolocateBtn" onclick="getCurrentLocation()">📍 Use My Location</button>
+      </div>
+    </form>
+
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="nearby-results">
+    {% if results %}
+      <div class="results-header">
+        <h2>{{ results|length }} Shelter{% if results|length != 1 %}s{% endif %} Found</h2>
+        <p class="results-subtitle">Sorted by distance</p>
+      </div>
+      
+      <div class="shelters-grid">
+        {% for result in results %}
+          <article class="shelter-card">
+            <div class="shelter-card-header">
+              {% if result.shelter.photo %}
+                <img src="{{ result.shelter.photo.url }}" alt="{{ result.shelter.name }}" class="shelter-photo">
+              {% else %}
+                <div class="shelter-photo-placeholder">🏢</div>
+              {% endif %}
+              <div class="shelter-distance-badge">
+                <span class="distance-value">{{ result.distance|floatformat:1 }}</span>
+                <span class="distance-unit">km</span>
+              </div>
+            </div>
+            
+            <div class="shelter-card-body">
+              <h3><a href="{{ result.shelter.get_absolute_url }}" class="shelter-name">{{ result.shelter.name }}</a></h3>
+              
+              <div class="shelter-info">
+                <div class="info-item">
+                  <span class="info-label">📍 Location</span>
+                  <span class="info-value">{{ result.shelter.city }}</span>
+                </div>
+                
+                {% if result.shelter.phone %}
+                  <div class="info-item">
+                    <span class="info-label">📱 Phone</span>
+                    <a href="tel:{{ result.shelter.phone }}" class="info-value">{{ result.shelter.phone }}</a>
+                  </div>
+                {% endif %}
+                
+                {% if result.shelter.email %}
+                  <div class="info-item">
+                    <span class="info-label">✉️ Email</span>
+                    <a href="mailto:{{ result.shelter.email }}" class="info-value">{{ result.shelter.email }}</a>
+                  </div>
+                {% endif %}
+              </div>
+
+              {% if result.shelter.description %}
+                <p class="shelter-description">{{ result.shelter.description|truncatewords:20 }}</p>
+              {% endif %}
+
+              <div class="shelter-stats">
+                <div class="stat">
+                  <span class="stat-value">{{ result.available_count }}</span>
+                  <span class="stat-label">Pets Available</span>
+                </div>
+              </div>
+
+              <div class="shelter-actions">
+                <a href="{{ result.shelter.get_absolute_url }}" class="button primary small">View Shelter</a>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🗺️</div>
+        <h2>No shelters found</h2>
+        <p>Enter your location and search radius above to discover nearby shelters with available pets.</p>
+      </div>
+    {% endif %}
   </div>
 </section>
+
+<script>
+function getCurrentLocation() {
+  const btn = document.getElementById('geolocateBtn');
+  btn.textContent = '⏳ Getting location...';
+  btn.disabled = true;
+  
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        const lat = position.coords.latitude.toFixed(4);
+        const lng = position.coords.longitude.toFixed(4);
+        document.getElementById('latitude').value = lat;
+        document.getElementById('longitude').value = lng;
+        btn.textContent = '📍 Location found!';
+        setTimeout(() => {
+          document.getElementById('searchForm').submit();
+        }, 500);
+      },
+      function(error) {
+        btn.textContent = '📍 Use My Location';
+        btn.disabled = false;
+        alert('Could not get your location: ' + error.message);
+      }
+    );
+  } else {
+    btn.textContent = '📍 Use My Location';
+    btn.disabled = false;
+    alert('Geolocation is not supported by your browser');
+  }
+}
+</script>
 {% endblock %}

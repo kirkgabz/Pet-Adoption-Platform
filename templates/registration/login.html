@@ -2,6 +2,7 @@
 {% load static %}
 {% block title %}Login{% endblock %}
 {% block body_class %}auth-layout{% endblock %}
+{% block top_user_card %}{% endblock %}
 {% block content %}
 <section class="auth-page">
   <div class="auth-visual">
@@ -18,8 +19,14 @@
     <form class="auth-card" method="post">
       {% csrf_token %}
       <h2>Login</h2>
+      <p class="auth-login-note">
+        Enter your username and password, then choose whether to sign in as a user or shelter staff.
+      </p>
       {{ form.as_p }}
-      <button class="primary">Login</button>
+      <div class="auth-login-actions">
+        <button type="submit" name="login_role" value="user" class="primary">Login as User</button>
+        <button type="submit" name="login_role" value="staff" class="secondary">Login as Shelter Staff</button>
+      </div>
       <div style="text-align:center;margin:14px 0;color:var(--muted);">or</div>
       <a class="social-btn google" href="/accounts/google/login/">
         <span class="icon">

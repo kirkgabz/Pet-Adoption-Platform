@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Available Pets{% endblock %}
+{% block content %}
+<section class="dashboard">
+  <div class="dashboard-main">
+    <header class="dash-header">
+      <div>
+        <p class="eyebrow">Available for Adoption</p>
+        <h1>Pets Looking for Homes</h1>
+      </div>
+      <form class="dash-search" method="get">
+        <input name="q" placeholder="Search pets, breeds, notes" value="{{ request.GET.q }}">
+        <button>Search</button>
+      </form>
+    </header>
+
+    <form class="filters dashboard-filters" method="get">
+      <select class="field" name="species">
+        <option value="">All species</option>
+        {% for value,label in species_choices %}<option value="{{ value }}" {% if request.GET.species == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <select class="field" name="tag">
+        <option value="">Any personality</option>
+        {% for tag in tags %}<option value="{{ tag.id }}" {% if request.GET.tag == tag.id|stringformat:"s" %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
+      </select>
+      <button>Filter</button>
+    </form>
+
+    <div class="dashboard-panels">
+      <section class="panel-card">
+        <div class="panel-title">
+          <h2>Available Pets</h2>
+          <span class="pet-count">{{ paginator.count }} pets</span>
+        </div>
+        <div class="pets-grid">
+          {% for pet in object_list %}
+            <a class="pet-card" href="{{ pet.get_absolute_url }}">
+              <div class="pet-card-image">
+                {% if pet.photo %}<img src="{{ pet.photo.url }}" alt="{{ pet.name }}" class="pet-photo">{% else %}<div class="pet-photo-placeholder">🐾</div>{% endif %}
+              </div>
+              <div class="pet-card-content">
+                <h3>{{ pet.name }}</h3>
+                <div class="pet-specs">
+                  <span class="spec-item">{{ pet.get_species_display }}</span>
+                  {% if pet.breed %}<span class="spec-item">{{ pet.breed }}</span>{% endif %}
+                  <span class="spec-item">{{ pet.age }} yrs</span>
+                </div>
+                <p class="pet-location">📍 {{ pet.shelter.city|default:pet.shelter.name }}</p>
+                {% if pet.personality_tags.all %}
+                  <div class="pet-tags">
+                    {% for tag in pet.personality_tags.all|slice:":2" %}
+                      <span class="tag">{{ tag.name }}</span>
+                    {% endfor %}
+                    {% if pet.personality_tags.all|length > 2 %}<span class="tag-more">+{{ pet.personality_tags.all|length|add:"-2" }}</span>{% endif %}
+                  </div>
+                {% endif %}
+              </div>
+            </a>
+          {% empty %}
+            <div class="empty-pets">
+              <p class="empty-icon">🔍</p>
+              <p class="empty-text">No available pets match your filters at the moment.</p>
+            </div>
+          {% endfor %}
+        </div>
+        {% include "adoption/partials/pagination.html" %}
+      </section>
+    </div>
+  </div>
+
+  <aside class="dashboard-side">
+    <section class="metric-card">
+      <p class="eyebrow">Quick Stats</p>
+      <div class="stat-stack">
+        <div><strong>{{ paginator.count }}</strong><span>Available Now</span></div>
+      </div>
+    </section>
+
+    <section class="tip-card">
+      <p class="eyebrow">Adoption Tip</p>
+      <h2>Take your time choosing.</h2>
+      <p>Look at each pet's personality tags and profile to find a great match for your home.</p>
+    </section>
+  </aside>
+</section>
+{% endblock %}
+
