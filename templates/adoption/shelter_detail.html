@@ -2,7 +2,15 @@
 {% block title %}{{ object.name }}{% endblock %}
 {% block content %}
 <section class="panel">
-  <div class="split"><h1>{{ object.name }}</h1><div><a class="button" href="{% url 'shelter-update' object.pk %}">Edit</a> <a class="button danger" href="{% url 'shelter-delete' object.pk %}">Delete</a></div></div>
+  <div class="split">
+    <h1>{{ object.name }}</h1>
+    {% if user.is_staff %}
+      <div>
+        <a class="button" href="{% url 'shelter-update' object.pk %}">Edit</a>
+        {% if user.is_superuser %}<a class="button danger" href="{% url 'shelter-delete' object.pk %}">Delete</a>{% endif %}
+      </div>
+    {% endif %}
+  </div>
   <p>{{ object.description }}</p>
   <p><strong>Address:</strong> {{ object.address }}, {{ object.city }}</p>
   <p><strong>Contact:</strong> {{ object.email }} {{ object.phone }}</p>

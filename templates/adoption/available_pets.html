@@ -98,7 +98,7 @@
                   <p><strong>Shelter:</strong> {{ pet.shelter.name }}</p>
                   <p><strong>Located near:</strong> {{ pet.shelter.city|default:pet.shelter.address }}</p>
                   <div class="pet-preview-actions">
-                    {% if user.is_authenticated and pet.posted_by != user and pet.status == 'available' %}
+                    {% if user.is_authenticated and not user.is_staff and pet.posted_by != user and pet.status == 'available' %}
                       <a class="button primary application-preview-trigger" href="{% url 'application-create' pet.pk %}" data-preview-target="application-preview-{{ pet.pk }}">Apply to Adopt</a>
                     {% elif pet.posted_by == user %}
                       <span class="muted">You cannot apply to your own pet listing.</span>
@@ -107,6 +107,7 @@
                 </div>
               </article>
             </template>
+            {% if not user.is_staff %}
             <template id="application-preview-{{ pet.pk }}">
               <article class="application-preview-detail">
                 <div class="application-preview-head">
@@ -153,6 +154,7 @@
                 </form>
               </article>
             </template>
+            {% endif %}
           {% empty %}
             <div class="empty-pets">
               <p class="empty-icon">🔍</p>

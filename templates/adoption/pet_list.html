@@ -6,14 +6,20 @@
     <header class="dash-header">
       <div>
         <p class="eyebrow">Dashboard</p>
-        <h1>Welcome back{% if user.is_authenticated %}, {{ user.first_name|default:user.username }}{% endif %}</h1>
+        <h1>{% if user.is_staff %}Shelter Dashboard{% else %}Welcome back{% if user.is_authenticated %}, {{ user.first_name|default:user.username }}{% endif %}{% endif %}</h1>
       </div>
+      {% if not user.is_staff %}
       <form class="dash-search" method="get" action="{% url 'available-pets' %}">
         <input name="q" placeholder="Search pets, breeds, notes" value="{{ request.GET.q }}">
         <button type="submit">Search</button>
       </form>
+      {% endif %}
       <div class="dash-actions">
+        {% if user.is_staff %}
         <a class="button primary" href="{% url 'pet-create' %}">Post Pet</a>
+        {% else %}
+        <a class="button primary" href="{% url 'available-pets' %}">Find Pets</a>
+        {% endif %}
       </div>
       <div class="header-meta-box">
         <div style="font-size:12px;color:var(--muted);">{{ current_date|date:"l, F j, Y" }}</div>
@@ -29,7 +35,7 @@
 
     <section class="hero-panel">
       <div class="hero-copy">
-        <p class="eyebrow">Featured adoption</p>
+        <p class="eyebrow">{% if user.is_staff %}Shelter listing{% else %}Featured adoption{% endif %}</p>
         {% if featured_pet %}
           <h2>Meet {{ featured_pet.name }}</h2>
           <p>{{ featured_pet.get_species_display }}{% if featured_pet.breed %} / {{ featured_pet.breed }}{% endif %} / {{ featured_pet.age }} years old</p>
@@ -38,9 +44,15 @@
           </div>
           <a class="button primary" href="{{ featured_pet.get_absolute_url }}">View Profile</a>
         {% else %}
-          <h2>Start building your adoption board</h2>
-          <p>Add shelters, post pets, and track every application from one calm dashboard.</p>
-          <a class="button primary" href="{% url 'pet-create' %}">Post First Pet</a>
+          {% if user.is_staff %}
+            <h2>Start your shelter listings.</h2>
+            <p>Post pets for adoption and review applications from one focused shelter workspace.</p>
+            <a class="button primary" href="{% url 'pet-create' %}">Post First Pet</a>
+          {% else %}
+            <h2>Find pets ready for a home.</h2>
+            <p>Browse available pets, learn about their personality, and apply when you find the right match.</p>
+            <a class="button primary" href="{% url 'available-pets' %}">Browse Pets</a>
+          {% endif %}
         {% endif %}
       </div>
       <div class="hero-pet">
@@ -63,8 +75,12 @@
     <div class="dashboard-panels">
       <section class="panel-card">
         <div class="panel-title">
-          <h2>Available Pets</h2>
+          <h2>{{ dashboard_pet_title }}</h2>
+          {% if user.is_staff %}
+          <a class="button primary preview-action" href="{% url 'pet-create' %}">Post Pet</a>
+          {% else %}
           <a class="button primary preview-action" href="{% url 'available-pets' %}">View all</a>
+          {% endif %}
         </div>
         <div class="pet-table">
           {% for pet in available_pets %}
@@ -77,7 +93,7 @@
               <em>{{ pet.get_status_display }}</em>
             </a>
           {% empty %}
-            <p class="muted">No available pets are listed yet.</p>
+            <p class="muted">{% if user.is_staff %}No pets posted by your shelter yet.{% else %}No available pets are listed yet.{% endif %}</p>
           {% endfor %}
         </div>
       </section>
@@ -106,7 +122,7 @@
 
   <aside class="dashboard-side">
     <section class="metric-card">
-      <p class="eyebrow">Adoption Progress</p>
+      <p class="eyebrow">{% if user.is_staff %}Shelter Progress{% else %}Adoption Progress{% endif %}</p>
       <div class="ring" style="--value: {{ pet_counts.available|default:0 }};">
         <strong>{{ pet_counts.available }}</strong>
         <span>Available</span>
@@ -120,8 +136,8 @@
 
     <section class="tip-card">
       <p class="eyebrow">Daily Tip</p>
-      <h2>Strong profiles get better matches.</h2>
-      <p>Add clear photos, personality tags, and honest care notes so adopters know what life with each pet feels like.</p>
+      <h2>{{ dashboard_tip_title }}</h2>
+      <p>{{ dashboard_tip_text }}</p>
     </section>
 
     <section class="stat-stack">

@@ -13,15 +13,15 @@
     <div class="tags">{% for tag in object.personality_tags.all %}<span>{{ tag.name }}</span>{% endfor %}</div>
     <p><strong>Shelter:</strong> <a href="{{ object.shelter.get_absolute_url }}">{{ object.shelter.name }}</a></p>
     <div class="actions">
-      {% if user.is_authenticated and object.posted_by != user and object.status == 'available' %}
+      {% if user.is_authenticated and not user.is_staff and object.posted_by != user and object.status == 'available' %}
         <a class="button primary" href="{% url 'application-create' object.pk %}">Apply to Adopt</a>
-      {% elif object.posted_by == user %}
+      {% elif object.posted_by == user and not user.is_staff %}
         <span class="note">You cannot apply to your own pet listing.</span>
       {% endif %}
-      {% if user.is_staff %}
+      {% if can_manage_pet %}
         <a class="button" href="{% url 'pet-update' object.pk %}">Edit</a>
       {% endif %}
-      {% if user.is_staff or object.posted_by == user %}
+      {% if can_manage_pet %}
         <a class="button danger" href="{% url 'pet-delete' object.pk %}">Delete</a>
       {% endif %}
     </div>

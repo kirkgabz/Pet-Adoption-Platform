@@ -5,7 +5,7 @@
 {% block sidebar %}{% endblock %}
 {% block top_user_card %}{% endblock %}
 {% block content %}
-<section class="auth-page">
+<section class="auth-page register-auth-page">
   <div class="auth-visual">
     <div class="auth-brand">
       <img src="{% static 'img/pet-adoption-logo-transparent.png' %}" alt="Pet Adoption Logo">
@@ -20,10 +20,99 @@
     <form class="auth-card" method="post">
       {% csrf_token %}
       <h2>Create Account</h2>
-      {{ form.as_p }}
+      <p class="auth-login-note">Choose Adopter for pet applications or Shelter Staff to manage shelter listings.</p>
+      {{ form.non_field_errors }}
+      <div class="register-fields">
+        <div class="register-field register-field-full">
+          <label>{{ form.account_type.label }}</label>
+          {{ form.account_type }}
+          {{ form.account_type.errors }}
+        </div>
+        <label class="register-field">
+          <span>{{ form.username.label }}</span>
+          {{ form.username }}
+          {{ form.username.errors }}
+        </label>
+        <label class="register-field">
+          <span>{{ form.email.label }}</span>
+          {{ form.email }}
+          {{ form.email.errors }}
+        </label>
+        <label class="register-field">
+          <span>{{ form.first_name.label }}</span>
+          {{ form.first_name }}
+          {{ form.first_name.errors }}
+        </label>
+        <label class="register-field">
+          <span>{{ form.last_name.label }}</span>
+          {{ form.last_name }}
+          {{ form.last_name.errors }}
+        </label>
+      </div>
+
+      <section class="staff-fields" data-staff-fields hidden>
+        <p class="eyebrow">Shelter Details</p>
+        <div class="register-fields">
+          <label class="register-field register-field-full">
+            <span>{{ form.shelter_name.label }}</span>
+            {{ form.shelter_name }}
+            {{ form.shelter_name.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.shelter_phone.label }}</span>
+            {{ form.shelter_phone }}
+            {{ form.shelter_phone.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.shelter_city.label }}</span>
+            {{ form.shelter_city }}
+            {{ form.shelter_city.errors }}
+          </label>
+          <label class="register-field register-field-full">
+            <span>{{ form.shelter_address.label }}</span>
+            {{ form.shelter_address }}
+            {{ form.shelter_address.errors }}
+          </label>
+        </div>
+      </section>
+
+      <div class="register-fields">
+        <label class="register-field register-field-full">
+          <span>{{ form.password1.label }}</span>
+          {{ form.password1 }}
+          {{ form.password1.errors }}
+          {% if form.password1.help_text %}<small>{{ form.password1.help_text }}</small>{% endif %}
+        </label>
+        <label class="register-field register-field-full">
+          <span>{{ form.password2.label }}</span>
+          {{ form.password2 }}
+          {{ form.password2.errors }}
+          {% if form.password2.help_text %}<small>{{ form.password2.help_text }}</small>{% endif %}
+        </label>
+      </div>
       <button class="primary">Sign Up</button>
       <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Login</a></p>
     </form>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function(){
+    const staffFields = document.querySelector('[data-staff-fields]');
+    const accountInputs = document.querySelectorAll('input[name="account_type"]');
+    if (!staffFields || !accountInputs.length) return;
+
+    function syncStaffFields(){
+      const selected = document.querySelector('input[name="account_type"]:checked');
+      staffFields.hidden = !selected || selected.value !== 'staff';
+    }
+
+    accountInputs.forEach(function(input){
+      input.addEventListener('change', syncStaffFields);
+    });
+    syncStaffFields();
+  })();
+</script>
 {% endblock %}

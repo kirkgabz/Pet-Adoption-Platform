@@ -33,11 +33,50 @@ except Exception:
 from .models import AdoptionApplication, ConversationMessage, Pet, PersonalityTag, Shelter
 
 
+def staff_shelters_for(user):
+    if user.is_superuser:
+        return Shelter.objects.all()
+    if user.is_staff:
+        return Shelter.objects.filter(email__iexact=user.email)
+    return Shelter.objects.none()
+
+
+def staff_pets_for(user):
+    queryset = Pet.objects.select_related("shelter", "posted_by").prefetch_related("personality_tags")
+    if user.is_superuser:
+        return queryset
+    if user.is_staff:
+        return queryset.filter(Q(posted_by=user) | Q(shelter__email__iexact=user.email)).distinct()
+    return queryset.none()
+
+
+def staff_applications_for(user):
+    queryset = AdoptionApplication.objects.select_related("pet", "applicant", "pet__shelter")
+    if user.is_superuser:
+        return queryset
+    if user.is_staff:
+        return queryset.filter(Q(pet__posted_by=user) | Q(pet__shelter__email__iexact=user.email)).distinct()
+    return queryset.none()
+
+
 class StaffRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     login_url = 'login'
 
     def test_func(self):
         return self.request.user.is_staff
+
+    def handle_no_permission(self):
+        if self.request.user.is_authenticated:
+            messages.error(self.request, "Shelter staff access is required for that page.")
+            return redirect("pet-list")
+        return super().handle_no_permission()
+
+
+class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    login_url = "login"
+
+    def test_func(self):
+        return self.request.user.is_superuser
 
 
 class LandingView(TemplateView):
@@ -70,7 +109,10 @@ class PetListView(LoginRequiredMixin, ListView):
     paginate_by = 9
 
     def get_queryset(self):
-        queryset = Pet.objects.select_related("shelter").prefetch_related("personality_tags")
+        if self.request.user.is_staff:
+            queryset = staff_pets_for(self.request.user)
+        else:
+            queryset = Pet.objects.select_related("shelter").prefetch_related("personality_tags")
         query = self.request.GET.get("q")
         species = self.request.GET.get("species")
         status = self.request.GET.get("status")
@@ -90,33 +132,46 @@ class PetListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        pet_scope = staff_pets_for(self.request.user) if self.request.user.is_staff else Pet.objects.all()
+        application_scope = (
+            staff_applications_for(self.request.user)
+            if self.request.user.is_staff
+            else AdoptionApplication.objects.filter(applicant=self.request.user)
+        )
         context["species_choices"] = Pet.Species.choices
         context["status_choices"] = Pet.Status.choices
         context["tags"] = PersonalityTag.objects.all()
         context["featured_pet"] = (
-            Pet.objects.select_related("shelter")
+            pet_scope.select_related("shelter")
             .prefetch_related("personality_tags")
             .filter(status__in=[Pet.Status.AVAILABLE, Pet.Status.PENDING])
             .order_by("-created_at")
             .first()
         )
         context["latest_pets"] = (
-            Pet.objects.select_related("shelter")
+            pet_scope.select_related("shelter")
             .prefetch_related("personality_tags")
             .order_by("-created_at")[:4]
         )
-        context["recent_applications"] = AdoptionApplication.objects.select_related(
-            "pet", "applicant", "pet__shelter"
-        ).order_by("-created_at")[:4]
+        context["recent_applications"] = application_scope.order_by("-created_at")[:4]
         context["pet_counts"] = {
-            "total": Pet.objects.count(),
-            "available": Pet.objects.filter(status=Pet.Status.AVAILABLE).count(),
-            "pending": Pet.objects.filter(status=Pet.Status.PENDING).count(),
-            "adopted": Pet.objects.filter(status=Pet.Status.ADOPTED).count(),
+            "total": pet_scope.count(),
+            "available": pet_scope.filter(status=Pet.Status.AVAILABLE).count(),
+            "pending": pet_scope.filter(status=Pet.Status.PENDING).count(),
+            "adopted": pet_scope.filter(status=Pet.Status.ADOPTED).count(),
         }
-        context["shelter_count"] = Shelter.objects.count()
+        context["shelter_count"] = staff_shelters_for(self.request.user).count() if self.request.user.is_staff else Shelter.objects.count()
         context["application_counts"] = dict(
-            AdoptionApplication.objects.values_list("status").annotate(total=Count("id"))
+            application_scope.values_list("status").annotate(total=Count("id"))
+        )
+        context["dashboard_pet_title"] = "Your Posted Pets" if self.request.user.is_staff else "Available Pets"
+        context["dashboard_tip_title"] = (
+            "Review applications quickly." if self.request.user.is_staff else "Strong profiles get better matches."
+        )
+        context["dashboard_tip_text"] = (
+            "Keep pet listings current and review new adoption applications so adopters get clear next steps."
+            if self.request.user.is_staff
+            else "Add clear photos, personality tags, and honest care notes so adopters know what life with each pet feels like."
         )
         # Current date
         context["current_date"] = datetime.datetime.now()
@@ -126,12 +181,15 @@ class PetListView(LoginRequiredMixin, ListView):
         context["current_temp_f"] = None
         context["weather_icon"] = None
         context["weather_desc"] = None
-        context["available_pets"] = (
-            Pet.objects.select_related("shelter")
-            .prefetch_related("personality_tags")
-            .filter(status=Pet.Status.AVAILABLE)
-            .order_by("-created_at")[:3]
-        )
+        if self.request.user.is_staff:
+            context["available_pets"] = pet_scope.order_by("-created_at")[:3]
+        else:
+            context["available_pets"] = (
+                Pet.objects.select_related("shelter")
+                .prefetch_related("personality_tags")
+                .filter(status=Pet.Status.AVAILABLE)
+                .order_by("-created_at")[:3]
+            )
         api_key = getattr(settings, "OPENWEATHER_API_KEY", None) or os.environ.get("OPENWEATHER_API_KEY")
         city = None
         first_shelter = Shelter.objects.first()
@@ -195,12 +253,30 @@ class PetDetailView(DetailView):
     def get_queryset(self):
         return Pet.objects.select_related("shelter", "posted_by").prefetch_related("personality_tags")
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context["can_manage_pet"] = (
+            user.is_authenticated
+            and (
+                user.is_superuser
+                or (user.is_staff and staff_pets_for(user).filter(pk=self.object.pk).exists())
+            )
+        )
+        return context
+
 
 class AvailablePetsView(LoginRequiredMixin, ListView):
     model = Pet
     template_name = "adoption/available_pets.html"
     paginate_by = 12
     context_object_name = "object_list"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user.is_staff:
+            messages.info(request, "Shelter staff accounts manage pets from the dashboard.")
+            return redirect("pet-list")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = Pet.objects.select_related("shelter").prefetch_related("personality_tags").filter(status=Pet.Status.AVAILABLE)
@@ -232,9 +308,21 @@ class AvailablePetsView(LoginRequiredMixin, ListView):
         return context
 
 
-class PetCreateView(LoginRequiredMixin, CreateView):
+class PetCreateView(StaffRequiredMixin, CreateView):
     model = Pet
     form_class = PetForm
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user.is_staff and not request.user.is_superuser:
+            if not staff_shelters_for(request.user).exists():
+                messages.error(request, "Add your shelter details before posting pets.")
+                return redirect("shelter-create")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
     def form_valid(self, form):
         form.instance.posted_by = self.request.user
@@ -245,12 +333,24 @@ class PetCreateView(LoginRequiredMixin, CreateView):
 class PetOwnershipMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         pet = self.get_object()
-        return self.request.user.is_staff or pet.posted_by == self.request.user
+        if self.request.user.is_superuser:
+            return True
+        if self.request.user.is_staff:
+            return staff_pets_for(self.request.user).filter(pk=pet.pk).exists()
+        return False
 
 
 class PetUpdateView(StaffRequiredMixin, UpdateView):
     model = Pet
     form_class = PetForm
+
+    def get_queryset(self):
+        return staff_pets_for(self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
 
 class PetDeleteView(PetOwnershipMixin, DeleteView):
@@ -263,7 +363,10 @@ class ShelterListView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = Shelter.objects.all()
+        if self.request.user.is_authenticated and self.request.user.is_staff:
+            queryset = staff_shelters_for(self.request.user)
+        else:
+            queryset = Shelter.objects.all()
         query = self.request.GET.get("q")
         if query:
             queryset = queryset.filter(Q(name__icontains=query) | Q(city__icontains=query) | Q(address__icontains=query))
@@ -273,20 +376,45 @@ class ShelterListView(ListView):
 class ShelterDetailView(DetailView):
     model = Shelter
 
+    def get_queryset(self):
+        if self.request.user.is_authenticated and self.request.user.is_staff:
+            return staff_shelters_for(self.request.user)
+        return Shelter.objects.all()
+
 
 class ShelterCreateView(StaffRequiredMixin, CreateView):
     model = Shelter
     form_class = ShelterForm
+
+    def form_valid(self, form):
+        if not self.request.user.is_superuser:
+            form.instance.email = self.request.user.email
+        messages.success(self.request, "Shelter profile saved.")
+        return super().form_valid(form)
 
 
 class ShelterUpdateView(StaffRequiredMixin, UpdateView):
     model = Shelter
     form_class = ShelterForm
 
+    def get_queryset(self):
+        return staff_shelters_for(self.request.user)
+
+    def form_valid(self, form):
+        if not self.request.user.is_superuser:
+            form.instance.email = self.request.user.email
+        messages.success(self.request, "Shelter profile updated.")
+        return super().form_valid(form)
+
 
 class ShelterDeleteView(StaffRequiredMixin, DeleteView):
     model = Shelter
     success_url = reverse_lazy("shelter-list")
+
+    def get_queryset(self):
+        if self.request.user.is_superuser:
+            return Shelter.objects.all()
+        return Shelter.objects.none()
 
 
 class ApplicationListView(LoginRequiredMixin, ListView):
@@ -295,10 +423,9 @@ class ApplicationListView(LoginRequiredMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = AdoptionApplication.objects.select_related("pet", "applicant", "pet__shelter")
         if self.request.user.is_staff:
-            return queryset
-        return queryset.filter(applicant=self.request.user)
+            return staff_applications_for(self.request.user)
+        return AdoptionApplication.objects.select_related("pet", "applicant", "pet__shelter").filter(applicant=self.request.user)
 
 
 class ApplicationUpdateView(LoginRequiredMixin, UpdateView):
@@ -307,7 +434,7 @@ class ApplicationUpdateView(LoginRequiredMixin, UpdateView):
 
     def get_queryset(self):
         if self.request.user.is_staff:
-            return AdoptionApplication.objects.all()
+            return staff_applications_for(self.request.user)
         return AdoptionApplication.objects.none()
 
 
@@ -316,13 +443,12 @@ class ApplicationDeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy("application-list")
 
     def get_queryset(self):
-        queryset = AdoptionApplication.objects.all()
         if self.request.user.is_staff:
-            return queryset
-        return queryset.filter(applicant=self.request.user)
+            return staff_applications_for(self.request.user)
+        return AdoptionApplication.objects.filter(applicant=self.request.user)
 
 
-class TagListView(ListView):
+class TagListView(StaffRequiredMixin, ListView):
     model = PersonalityTag
 
 
@@ -343,19 +469,19 @@ class TagDeleteView(StaffRequiredMixin, DeleteView):
     success_url = reverse_lazy("tag-list")
 
 
-class UserListView(StaffRequiredMixin, ListView):
+class UserListView(SuperuserRequiredMixin, ListView):
     model = User
     template_name = "adoption/user_list.html"
 
 
-class UserUpdateView(StaffRequiredMixin, UpdateView):
+class UserUpdateView(SuperuserRequiredMixin, UpdateView):
     model = User
     form_class = UserUpdateForm
     template_name = "adoption/user_form.html"
     success_url = reverse_lazy("user-list")
 
 
-class UserDeleteView(StaffRequiredMixin, DeleteView):
+class UserDeleteView(SuperuserRequiredMixin, DeleteView):
     model = User
     template_name = "adoption/user_confirm_delete.html"
     success_url = reverse_lazy("user-list")
@@ -367,7 +493,10 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            messages.success(request, "Welcome. You can now apply to adopt pets.")
+            if user.is_staff:
+                messages.success(request, "Welcome. You can now post pets for adoption.")
+            else:
+                messages.success(request, "Welcome. You can now apply to adopt pets.")
             return redirect("pet-list")
     else:
         form = UserRegisterForm()
@@ -379,6 +508,9 @@ def apply_to_adopt(request, pk):
     if not request.user.is_authenticated:
         messages.info(request, "Please log in before applying to adopt.")
         return redirect(f"{reverse('login')}?next={request.path}")
+    if request.user.is_staff:
+        messages.error(request, "Shelter staff accounts cannot apply to adopt pets.")
+        return redirect("pet-list")
     existing_application = AdoptionApplication.objects.filter(pet=pet, applicant=request.user).first()
     if pet.posted_by == request.user:
         messages.error(request, "You cannot apply to adopt your own listed pet.")
@@ -408,7 +540,11 @@ def application_detail(request, pk):
         AdoptionApplication.objects.select_related("pet", "applicant", "pet__shelter"),
         pk=pk,
     )
-    if not request.user.is_staff and application.applicant != request.user:
+    if request.user.is_staff:
+        has_access = staff_applications_for(request.user).filter(pk=application.pk).exists()
+    else:
+        has_access = application.applicant == request.user
+    if not has_access:
         messages.error(request, "You do not have access to that application.")
         return redirect("application-list")
 
@@ -457,6 +593,9 @@ def application_detail(request, pk):
 
 
 def nearby_shelters(request):
+    if request.user.is_authenticated and request.user.is_staff:
+        messages.info(request, "Shelter staff accounts manage shelter details from the Shelters page.")
+        return redirect("shelter-list")
     latitude = request.GET.get("lat")
     longitude = request.GET.get("lng")
     try:

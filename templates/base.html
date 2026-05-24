@@ -18,15 +18,21 @@
       <nav class="side-nav">
         {% with active_url=request.resolver_match.url_name %}
         <a href="{% url 'pet-list' %}" {% if active_url == "pet-list" %}class="active"{% endif %}>Dashboard</a>
-        {% if user.is_authenticated %}
+        {% if user.is_staff %}
           <a href="{% url 'pet-create' %}" {% if active_url == "pet-create" %}class="active"{% endif %}>Post Pet</a>
         {% endif %}
-        <a href="{% url 'available-pets' %}" {% if active_url == "available-pets" %}class="active"{% endif %}>Available Pets</a>
+        {% if not user.is_staff %}
+          <a href="{% url 'available-pets' %}" {% if active_url == "available-pets" %}class="active"{% endif %}>Available Pets</a>
+        {% endif %}
         <a href="{% url 'shelter-list' %}" {% if active_url == "shelter-list" or active_url == "shelter-detail" or active_url == "shelter-create" or active_url == "shelter-update" or active_url == "shelter-delete" %}class="active"{% endif %}>Shelters</a>
-        <a href="{% url 'nearby-shelters' %}" {% if active_url == "nearby-shelters" %}class="active"{% endif %}>Nearby Shelters</a>
+        {% if not user.is_staff %}
+          <a href="{% url 'nearby-shelters' %}" {% if active_url == "nearby-shelters" %}class="active"{% endif %}>Nearby Shelters</a>
+        {% endif %}
         <a href="{% url 'application-list' %}" {% if active_url == "application-list" or active_url == "application-detail" or active_url == "application-update" or active_url == "application-delete" or active_url == "application-create" %}class="active"{% endif %}>Applications</a>
-        <a href="{% url 'tag-list' %}" {% if active_url == "tag-list" or active_url == "tag-create" or active_url == "tag-update" or active_url == "tag-delete" %}class="active"{% endif %}>Personality Tags</a>
         {% if user.is_staff %}
+          <a href="{% url 'tag-list' %}" {% if active_url == "tag-list" or active_url == "tag-create" or active_url == "tag-update" or active_url == "tag-delete" %}class="active"{% endif %}>Personality Tags</a>
+        {% endif %}
+        {% if user.is_superuser %}
           <a href="{% url 'user-list' %}" {% if active_url == "user-list" or active_url == "user-update" or active_url == "user-delete" %}class="active"{% endif %}>Users</a>
         {% endif %}
         {% endwith %}

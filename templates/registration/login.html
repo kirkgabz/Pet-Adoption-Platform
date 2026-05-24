@@ -21,7 +21,7 @@
       {% csrf_token %}
       <h2>Login</h2>
       <p class="auth-login-note">
-        Enter your username and password, then choose whether to sign in as a user or shelter staff.
+        Enter your username and password, then choose the role that matches your account.
       </p>
       {{ form.as_p }}
       <div class="auth-login-actions">
@@ -41,7 +41,7 @@
         </span>
         Continue with Google
       </a>
-      <p class="auth-switch">New here? <a href="{% url 'register' %}">Create an account</a></p>
+      <p class="auth-switch">New here? <a href="{% url 'register' %}">Create an adopter or shelter staff account</a></p>
     </form>
   </div>
 </section>

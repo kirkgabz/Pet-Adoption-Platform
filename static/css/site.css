@@ -23,6 +23,10 @@ body {
   font-family: "Segoe UI", "Trebuchet MS", ui-sans-serif, system-ui, Arial, sans-serif;
   line-height: 1.5;
 }
+body.auth-layout {
+  height: 100vh;
+  overflow: hidden;
+}
 a { color: var(--brand-dark); text-decoration: none; }
 h1, h2 { margin: 0 0 10px; line-height: 1.05; letter-spacing: 0; }
 p { margin: 0 0 12px; }
@@ -142,7 +146,7 @@ img { display: block; max-width: 100%; }
 }
 .auth-layout .main-stage {
   position: relative;
-  height: auto;
+  height: 100vh;
   min-height: 100vh;
   padding: 0;
   background: #ffffff;
@@ -1103,27 +1107,31 @@ img { display: block; max-width: 100%; }
   grid-template-columns: minmax(420px, 0.95fr) minmax(420px, 1.05fr);
   gap: 0;
   align-items: stretch;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   width: 100%;
   margin: 0 auto;
+  overflow: hidden;
 }
 .auth-visual {
-  position: relative;
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   gap: 10px;
+  min-height: 100vh;
+  height: 100vh;
   padding: clamp(36px, 6vw, 82px);
   padding-top: clamp(455px, 58vh, 610px);
   border-radius: 0;
   background:
     radial-gradient(circle at 72% 24%, rgba(255, 255, 255, 0.72), transparent 18%),
-    url("/static/img/cat-cutout.png") center 7% / min(390px, 58%) no-repeat,
+    url("/static/img/cat-cutout.png") center clamp(54px, 7vh, 82px) / min(390px, 58%) no-repeat,
     linear-gradient(135deg, #f7f2ff 0%, #efe8ff 100%);
   border: 0;
   box-shadow: none;
   overflow: hidden;
-  animation: authPanelShift 14s ease-in-out infinite alternate;
 }
 .auth-visual::before,
 .auth-visual::after {
@@ -1178,6 +1186,22 @@ img { display: block; max-width: 100%; }
   letter-spacing: 0;
   text-shadow: 0 12px 30px rgba(102, 70, 160, 0.12);
 }
+.register-auth-page .auth-visual h1 {
+  width: min(520px, 72%);
+  color: #ffffff;
+  text-shadow:
+    0 3px 0 rgba(51, 32, 79, 0.72),
+    0 16px 34px rgba(51, 32, 79, 0.36);
+}
+.register-auth-page .auth-visual h1::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -12px -16px;
+  border-radius: 18px;
+  background: rgba(51, 32, 79, 0.42);
+  backdrop-filter: blur(2px);
+}
 .auth-visual p:not(.eyebrow) {
   max-width: 570px;
   position: relative;
@@ -1189,15 +1213,19 @@ img { display: block; max-width: 100%; }
 }
 .auth-card-wrap {
   position: relative;
-  align-self: center;
-  justify-self: center;
-  width: min(540px, calc(100% - 48px));
-  padding-top: 112px;
+  align-self: stretch;
+  justify-self: stretch;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: calc(112px + clamp(38px, 7vh, 76px)) 24px clamp(34px, 5vh, 56px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .auth-mascot {
   position: absolute;
   z-index: 2;
-  top: -4px;
+  top: clamp(34px, 7vh, 72px);
   left: 50%;
   width: min(360px, 86%);
   transform: translateX(-50%);
@@ -1211,6 +1239,8 @@ img { display: block; max-width: 100%; }
   align-self: center;
   display: grid;
   gap: 12px;
+  width: min(540px, 100%);
+  margin: 0 auto;
   padding: 94px clamp(24px, 4vw, 42px) clamp(24px, 4vw, 42px);
   border: 1px solid var(--line);
   border-radius: 34px;
@@ -1247,6 +1277,74 @@ img { display: block; max-width: 100%; }
   padding-left: 18px;
   color: var(--muted);
   font-size: 13px;
+}
+.auth-card #id_account_type {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.auth-card #id_account_type div {
+  min-width: 0;
+}
+.auth-card #id_account_type label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfaff;
+  color: var(--ink);
+  font-weight: 800;
+}
+.auth-card #id_account_type input {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+  accent-color: var(--brand);
+}
+.register-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.register-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+.register-field-full {
+  grid-column: 1 / -1;
+}
+.register-field .field {
+  border-radius: 12px;
+}
+.register-field small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.staff-fields {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfaff;
+}
+.staff-fields[hidden] {
+  display: none;
+}
+.auth-card .errorlist {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--danger);
+  font-size: 12px;
 }
 .auth-switch {
   color: var(--muted);
@@ -1522,6 +1620,7 @@ button, .button {
 }
 
 @media (max-width: 1100px) {
+  body.auth-layout { height: auto; overflow: auto; }
   .app-shell { grid-template-columns: 1fr; height: auto; overflow: visible; }
   .sidebar {
     position: static;
@@ -1536,9 +1635,17 @@ button, .button {
   .sidebar-card, .sidebar-actions { max-width: 320px; }
   .dashboard { grid-template-columns: 1fr; }
   .dashboard-side { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .auth-page { grid-template-columns: 1fr; }
+  .auth-layout .main-stage { height: auto; overflow: visible; }
+  .auth-page { grid-template-columns: 1fr; height: auto; overflow: visible; }
   .auth-visual { min-height: 520px; }
-  .auth-card-wrap { width: min(520px, 100%); margin: 0 auto; }
+  .auth-card-wrap {
+    width: min(520px, 100%);
+    height: auto;
+    margin: 0 auto;
+    overflow: visible;
+    padding-top: 112px;
+  }
+  .auth-visual { position: relative; top: auto; height: auto; min-height: 520px; }
   .landing-card { grid-template-columns: 1fr; }
   .landing-art { min-height: 430px; }
   .landing-art img { left: 50%; right: auto; transform: translateX(-50%); width: min(430px, 78%); }
@@ -1925,9 +2032,11 @@ button, .button {
   .signin-banner { align-items: flex-start; flex-direction: column; }
   .auth-page { min-height: auto; }
   .auth-visual { min-height: 390px; border-radius: 0; }
+  .register-auth-page .auth-visual h1 { width: min(100%, 520px); }
   .auth-card-wrap { padding-top: 96px; }
   .auth-mascot { width: min(330px, 92%); }
   .auth-card { padding-top: 84px; border-radius: 26px; }
+  .register-fields { grid-template-columns: 1fr; }
   .landing-page { padding: 0; }
   .landing-card { min-height: 100vh; border-radius: 0; }
   .landing-brand { top: 22px; left: 22px; }
