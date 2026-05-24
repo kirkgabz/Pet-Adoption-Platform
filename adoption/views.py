@@ -206,6 +206,7 @@ class AvailablePetsView(LoginRequiredMixin, ListView):
         queryset = Pet.objects.select_related("shelter").prefetch_related("personality_tags").filter(status=Pet.Status.AVAILABLE)
         query = self.request.GET.get("q")
         species = self.request.GET.get("species")
+        location = self.request.GET.get("location")
         tag = self.request.GET.get("tag")
         if query:
             queryset = queryset.filter(
@@ -213,6 +214,12 @@ class AvailablePetsView(LoginRequiredMixin, ListView):
             )
         if species:
             queryset = queryset.filter(species=species)
+        if location:
+            queryset = queryset.filter(
+                Q(shelter__name__icontains=location)
+                | Q(shelter__city__icontains=location)
+                | Q(shelter__address__icontains=location)
+            )
         if tag:
             queryset = queryset.filter(personality_tags__id=tag)
         return queryset.distinct().order_by('?')
@@ -221,6 +228,7 @@ class AvailablePetsView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["species_choices"] = Pet.Species.choices
         context["tags"] = PersonalityTag.objects.all()
+        context["application_form"] = AdoptionApplicationForm()
         return context
 
 

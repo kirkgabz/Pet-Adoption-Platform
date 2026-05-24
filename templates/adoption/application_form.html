@@ -1,8 +1,42 @@
 {% extends "base.html" %}
 {% block title %}Adoption Application{% endblock %}
 {% block content %}
-<section class="panel">
+<section class="panel narrow">
   <h1>Apply to Adopt {{ pet.name }}</h1>
-  <form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary">Submit Application</button></form>
+  <div class="application-preview-summary">
+    <div class="mini-avatar">{{ pet.name|first|upper }}</div>
+    <div>
+      <strong>{{ pet.name }}</strong>
+      <small>{{ pet.get_species_display }}{% if pet.breed %} / {{ pet.breed }}{% endif %} / {{ pet.shelter.city|default:pet.shelter.name }}</small>
+    </div>
+  </div>
+  <form class="application-preview-form" method="post">
+    {% csrf_token %}
+    <div class="application-form-grid">
+      <label class="application-field">
+        <span>{{ form.home_type.label }}</span>
+        {{ form.home_type }}
+      </label>
+      <label class="application-check">
+        {{ form.has_yard }}
+        <span>
+          <strong>{{ form.has_yard.label }}</strong>
+          <small>Check this if the pet will have access to a safe yard or outdoor space.</small>
+        </span>
+      </label>
+      <label class="application-field application-field-full">
+        <span>{{ form.experience.label }}</span>
+        {{ form.experience }}
+      </label>
+      <label class="application-field application-field-full">
+        <span>{{ form.reason.label }}</span>
+        {{ form.reason }}
+      </label>
+    </div>
+    <div class="pet-preview-actions">
+      <a class="button" href="{{ pet.get_absolute_url }}">Back</a>
+      <button class="primary">Submit Application</button>
+    </div>
+  </form>
 </section>
 {% endblock %}

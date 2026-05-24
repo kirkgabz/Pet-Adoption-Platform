@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Available Pets{% endblock %}
 {% block content %}
-<section class="dashboard">
+<section class="dashboard available-pets-page">
   <div class="dashboard-main">
     <header class="dash-header">
       <div>
@@ -10,20 +10,34 @@
       </div>
       <form class="dash-search" method="get">
         <input name="q" placeholder="Search pets, breeds, notes" value="{{ request.GET.q }}">
+        {% if request.GET.species %}<input type="hidden" name="species" value="{{ request.GET.species }}">{% endif %}
+        {% if request.GET.location %}<input type="hidden" name="location" value="{{ request.GET.location }}">{% endif %}
+        {% if request.GET.tag %}<input type="hidden" name="tag" value="{{ request.GET.tag }}">{% endif %}
         <button>Search</button>
       </form>
     </header>
 
-    <form class="filters dashboard-filters" method="get">
-      <select class="field" name="species">
-        <option value="">All species</option>
-        {% for value,label in species_choices %}<option value="{{ value }}" {% if request.GET.species == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
-      </select>
-      <select class="field" name="tag">
-        <option value="">Any personality</option>
-        {% for tag in tags %}<option value="{{ tag.id }}" {% if request.GET.tag == tag.id|stringformat:"s" %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
-      </select>
-      <button>Filter</button>
+    <form class="filters dashboard-filters pet-filter-bar" method="get">
+      {% if request.GET.q %}<input type="hidden" name="q" value="{{ request.GET.q }}">{% endif %}
+      <label class="filter-control">
+        <span>Show me the pawfect...</span>
+        <select class="field" name="species">
+          <option value="">All species</option>
+          {% for value,label in species_choices %}<option value="{{ value }}" {% if request.GET.species == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="filter-control location-filter">
+        <span>Located near...</span>
+        <input class="field" name="location" placeholder="City, shelter, or address" value="{{ request.GET.location }}">
+      </label>
+      <label class="filter-control">
+        <span>Personality</span>
+        <select class="field" name="tag">
+          <option value="">Any personality</option>
+          {% for tag in tags %}<option value="{{ tag.id }}" {% if request.GET.tag == tag.id|stringformat:"s" %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="primary">Filter</button>
     </form>
 
     <div class="dashboard-panels">
@@ -34,7 +48,7 @@
         </div>
         <div class="pets-grid">
           {% for pet in object_list %}
-            <a class="pet-card" href="{{ pet.get_absolute_url }}">
+            <a class="pet-card pet-preview-trigger" href="{{ pet.get_absolute_url }}" data-preview-target="pet-preview-{{ pet.pk }}">
               <div class="pet-card-image">
                 {% if pet.photo %}<img src="{{ pet.photo.url }}" alt="{{ pet.name }}" class="pet-photo">{% else %}<div class="pet-photo-placeholder">🐾</div>{% endif %}
               </div>
@@ -56,6 +70,89 @@
                 {% endif %}
               </div>
             </a>
+            <template id="pet-preview-{{ pet.pk }}">
+              <article class="pet-preview-detail">
+                <div class="pet-preview-media">
+                  {% if pet.photo %}
+                    <img src="{{ pet.photo.url }}" alt="{{ pet.name }}">
+                  {% else %}
+                    <div class="pet-photo-placeholder">{{ pet.name|first|upper }}</div>
+                  {% endif %}
+                </div>
+                <div class="pet-preview-copy">
+                  <div class="split">
+                    <h2 id="petPreviewTitle">{{ pet.name }}</h2>
+                    <span class="status">{{ pet.get_status_display }}</span>
+                  </div>
+                  <p class="pet-preview-meta">
+                    {{ pet.get_species_display }}{% if pet.breed %} / {{ pet.breed }}{% endif %} / {{ pet.age }} years old
+                  </p>
+                  <p class="pet-preview-description">{{ pet.description|linebreaksbr }}</p>
+                  <div class="tags">
+                    {% for tag in pet.personality_tags.all %}
+                      <span>{{ tag.name }}</span>
+                    {% empty %}
+                      <span>Ready for a family</span>
+                    {% endfor %}
+                  </div>
+                  <p><strong>Shelter:</strong> {{ pet.shelter.name }}</p>
+                  <p><strong>Located near:</strong> {{ pet.shelter.city|default:pet.shelter.address }}</p>
+                  <div class="pet-preview-actions">
+                    {% if user.is_authenticated and pet.posted_by != user and pet.status == 'available' %}
+                      <a class="button primary application-preview-trigger" href="{% url 'application-create' pet.pk %}" data-preview-target="application-preview-{{ pet.pk }}">Apply to Adopt</a>
+                    {% elif pet.posted_by == user %}
+                      <span class="muted">You cannot apply to your own pet listing.</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </article>
+            </template>
+            <template id="application-preview-{{ pet.pk }}">
+              <article class="application-preview-detail">
+                <div class="application-preview-head">
+                  <button type="button" class="button" data-preview-back data-preview-target="pet-preview-{{ pet.pk }}">Back</button>
+                  <div>
+                    <p class="eyebrow">Adoption Application</p>
+                    <h2 id="petPreviewTitle">Apply to Adopt {{ pet.name }}</h2>
+                  </div>
+                </div>
+                <div class="application-preview-summary">
+                  <div class="mini-avatar">{{ pet.name|first|upper }}</div>
+                  <div>
+                    <strong>{{ pet.name }}</strong>
+                    <small>{{ pet.get_species_display }}{% if pet.breed %} / {{ pet.breed }}{% endif %} / {{ pet.shelter.city|default:pet.shelter.name }}</small>
+                  </div>
+                </div>
+                <form class="application-preview-form" method="post" action="{% url 'application-create' pet.pk %}">
+                  {% csrf_token %}
+                  <div class="application-form-grid">
+                    <label class="application-field">
+                      <span>{{ application_form.home_type.label }}</span>
+                      {{ application_form.home_type }}
+                    </label>
+                    <label class="application-check">
+                      {{ application_form.has_yard }}
+                      <span>
+                        <strong>{{ application_form.has_yard.label }}</strong>
+                        <small>Check this if the pet will have access to a safe yard or outdoor space.</small>
+                      </span>
+                    </label>
+                    <label class="application-field application-field-full">
+                      <span>{{ application_form.experience.label }}</span>
+                      {{ application_form.experience }}
+                    </label>
+                    <label class="application-field application-field-full">
+                      <span>{{ application_form.reason.label }}</span>
+                      {{ application_form.reason }}
+                    </label>
+                  </div>
+                  <div class="pet-preview-actions">
+                    <button type="button" class="button" data-preview-back data-preview-target="pet-preview-{{ pet.pk }}">Back</button>
+                    <button type="submit" class="primary">Submit Application</button>
+                  </div>
+                </form>
+              </article>
+            </template>
           {% empty %}
             <div class="empty-pets">
               <p class="empty-icon">🔍</p>
@@ -83,5 +180,81 @@
     </section>
   </aside>
 </section>
+<div class="pet-preview-overlay" id="petPreviewOverlay" hidden>
+  <div class="pet-preview-tab" role="dialog" aria-modal="true" aria-labelledby="petPreviewTitle">
+    <button type="button" class="pet-preview-close" data-preview-close aria-label="Close pet details">&times;</button>
+    <div data-preview-body></div>
+  </div>
+</div>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+  (function(){
+    const overlay = document.getElementById('petPreviewOverlay');
+    if (!overlay) return;
+
+    const body = overlay.querySelector('[data-preview-body]');
+    const closeButton = overlay.querySelector('[data-preview-close]');
+    let lastTrigger = null;
+
+    function closePreview(){
+      overlay.classList.remove('show');
+      overlay.hidden = true;
+      body.innerHTML = '';
+      document.body.classList.remove('pet-preview-open');
+      if (lastTrigger) lastTrigger.focus();
+    }
+
+    function renderTemplate(templateId){
+      const template = document.getElementById(templateId);
+      if (!template) return false;
+      body.innerHTML = '';
+      body.appendChild(template.content.cloneNode(true));
+      return true;
+    }
+
+    function openPreview(trigger){
+      if (!renderTemplate(trigger.dataset.previewTarget)) return;
+      lastTrigger = trigger;
+      overlay.hidden = false;
+      document.body.classList.add('pet-preview-open');
+      requestAnimationFrame(function(){
+        overlay.classList.add('show');
+        closeButton.focus();
+      });
+    }
+
+    document.addEventListener('click', function(event){
+      const trigger = event.target.closest && event.target.closest('.pet-preview-trigger');
+      if (!trigger) return;
+      event.preventDefault();
+      openPreview(trigger);
+    });
+
+    document.addEventListener('click', function(event){
+      const trigger = event.target.closest && event.target.closest('.application-preview-trigger');
+      if (!trigger) return;
+      event.preventDefault();
+      renderTemplate(trigger.dataset.previewTarget);
+      closeButton.focus();
+    });
+
+    document.addEventListener('click', function(event){
+      const trigger = event.target.closest && event.target.closest('[data-preview-back]');
+      if (!trigger) return;
+      event.preventDefault();
+      renderTemplate(trigger.dataset.previewTarget);
+      closeButton.focus();
+    });
+
+    closeButton.addEventListener('click', closePreview);
+    overlay.addEventListener('click', function(event){
+      if (event.target === overlay) closePreview();
+    });
+    document.addEventListener('keydown', function(event){
+      if (event.key === 'Escape' && !overlay.hidden) closePreview();
+    });
+  })();
+</script>
+{% endblock %}

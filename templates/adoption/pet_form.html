@@ -6,7 +6,7 @@
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
-    <button class="primary">Save</button>
+    <button class="primary">{% if object %}Save{% else %}Post{% endif %}</button>
   </form>
 </section>
 {% endblock %}

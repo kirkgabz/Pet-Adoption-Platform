@@ -89,6 +89,27 @@ class AdoptionApplicationForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = AdoptionApplication
         fields = ["home_type", "has_yard", "experience", "reason"]
+        labels = {
+            "home_type": "Home type",
+            "has_yard": "Yard or outdoor space",
+            "experience": "Pet care experience",
+            "reason": "Why this pet is a good fit",
+        }
+        widgets = {
+            "home_type": forms.TextInput(attrs={"placeholder": "Apartment, house, condo, townhouse..."}),
+            "experience": forms.Textarea(
+                attrs={
+                    "rows": 4,
+                    "placeholder": "Tell the shelter about your previous pet care experience.",
+                }
+            ),
+            "reason": forms.Textarea(
+                attrs={
+                    "rows": 4,
+                    "placeholder": "Share why you want to adopt this pet and how you will care for them.",
+                }
+            ),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
