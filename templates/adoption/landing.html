@@ -2,12 +2,18 @@
 {% load static %}
 {% block title %}Pet Adoption{% endblock %}
 {% block body_class %}landing-layout{% endblock %}
+{% block sidebar %}{% endblock %}
+{% block top_user_card %}{% endblock %}
 {% block content %}
 <section class="landing-page">
   <div class="landing-card">
     <div class="landing-brand">
       <img class="landing-logo-img" src="{% static 'img/pet-adoption-logo-transparent.png' %}" alt="Pet Adoption Logo">
       <strong>Pet Adoption</strong>
+    </div>
+    <div class="landing-top-actions">
+      <a class="button primary landing-primary" href="{% url 'login' %}">Login</a>
+      <a class="button landing-secondary" href="{% url 'register' %}">Register</a>
     </div>
 
     <div class="landing-copy">

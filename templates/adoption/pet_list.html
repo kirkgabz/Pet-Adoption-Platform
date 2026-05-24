@@ -8,9 +8,9 @@
         <p class="eyebrow">Dashboard</p>
         <h1>Welcome back{% if user.is_authenticated %}, {{ user.first_name|default:user.username }}{% endif %}</h1>
       </div>
-      <form class="dash-search" method="get">
+      <form class="dash-search" method="get" action="{% url 'available-pets' %}">
         <input name="q" placeholder="Search pets, breeds, notes" value="{{ request.GET.q }}">
-        <button>Search</button>
+        <button type="submit">Search</button>
       </form>
       <div class="dash-actions">
         <a class="button primary" href="{% url 'pet-create' %}">Post Pet</a>
@@ -60,30 +60,14 @@
       </div>
     </section>
 
-    <form class="filters dashboard-filters" method="get">
-      <select class="field" name="species">
-        <option value="">All species</option>
-        {% for value,label in species_choices %}<option value="{{ value }}" {% if request.GET.species == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
-      </select>
-      <select class="field" name="status">
-        <option value="">All statuses</option>
-        {% for value,label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
-      </select>
-      <select class="field" name="tag">
-        <option value="">Any personality</option>
-        {% for tag in tags %}<option value="{{ tag.id }}" {% if request.GET.tag == tag.id|stringformat:"s" %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
-      </select>
-      <button>Filter</button>
-    </form>
-
     <div class="dashboard-panels">
       <section class="panel-card">
         <div class="panel-title">
           <h2>Available Pets</h2>
-          <a href="{% url 'pet-create' %}">Add</a>
+          <a class="button primary preview-action" href="{% url 'available-pets' %}">View all</a>
         </div>
         <div class="pet-table">
-          {% for pet in object_list %}
+          {% for pet in available_pets %}
             <a class="pet-row" href="{{ pet.get_absolute_url }}">
               {% if pet.photo %}<img src="{{ pet.photo.url }}" alt="{{ pet.name }}" data-species="{{ pet.species }}" class="pet-image">{% else %}<span class="pet-thumb">{{ pet.name|first|upper }}</span>{% endif %}
               <span>
@@ -93,10 +77,9 @@
               <em>{{ pet.get_status_display }}</em>
             </a>
           {% empty %}
-            <p class="muted">No pets match your filters yet.</p>
+            <p class="muted">No available pets are listed yet.</p>
           {% endfor %}
         </div>
-        {% include "adoption/partials/pagination.html" %}
       </section>
 
       <section class="panel-card">

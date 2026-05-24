@@ -130,7 +130,7 @@ class PetListView(LoginRequiredMixin, ListView):
             Pet.objects.select_related("shelter")
             .prefetch_related("personality_tags")
             .filter(status=Pet.Status.AVAILABLE)
-            .order_by("-created_at")[:5]
+            .order_by("-created_at")[:3]
         )
         api_key = getattr(settings, "OPENWEATHER_API_KEY", None) or os.environ.get("OPENWEATHER_API_KEY")
         city = None
