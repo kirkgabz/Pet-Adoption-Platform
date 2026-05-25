@@ -94,11 +94,13 @@
         <button class="primary">Sign Up</button>
       </form>
       {% if google_login_configured %}
-        <div style="text-align:center;margin:14px 0;color:var(--muted);">or</div>
-        <form class="social-login-form" method="post" action="{% provider_login_url 'google' %}">
-          {% csrf_token %}
-          {% include "registration/partials/google_button.html" %}
-        </form>
+        <div data-adopter-google-login>
+          <div style="text-align:center;margin:14px 0;color:var(--muted);">or</div>
+          <form class="social-login-form" method="post" action="{% provider_login_url 'google' %}">
+            {% csrf_token %}
+            {% include "registration/partials/google_button.html" %}
+          </form>
+        </div>
       {% endif %}
       <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Login</a></p>
     </div>
@@ -110,12 +112,15 @@
 <script>
   (function(){
     const staffFields = document.querySelector('[data-staff-fields]');
+    const googleLogin = document.querySelector('[data-adopter-google-login]');
     const accountInputs = document.querySelectorAll('input[name="account_type"]');
     if (!staffFields || !accountInputs.length) return;
 
     function syncStaffFields(){
       const selected = document.querySelector('input[name="account_type"]:checked');
-      staffFields.hidden = !selected || selected.value !== 'staff';
+      const isStaff = selected && selected.value === 'staff';
+      staffFields.hidden = !isStaff;
+      if (googleLogin) googleLogin.hidden = !!isStaff;
     }
 
     accountInputs.forEach(function(input){
