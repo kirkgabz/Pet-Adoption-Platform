@@ -362,7 +362,8 @@ img { display: block; max-width: 100%; }
   align-self: end;
   min-height: 100%;
 }
-.landing-art img {
+.landing-art img,
+.landing-art .landing-video {
   position: absolute;
   right: clamp(80px, 10vw, 180px);
   bottom: 0;
@@ -373,6 +374,11 @@ img { display: block; max-width: 100%; }
   border-radius: 0;
   max-width: none;
   filter: drop-shadow(0 28px 42px rgba(28, 74, 96, 0.18));
+}
+.landing-art .landing-video {
+  display: block;
+  background: transparent;
+  pointer-events: none;
 }
 .shape {
   position: absolute;
@@ -1675,7 +1681,8 @@ button, .button {
   .auth-visual { position: relative; top: auto; height: auto; min-height: 520px; }
   .landing-card { grid-template-columns: 1fr; }
   .landing-art { min-height: 430px; }
-  .landing-art img { left: 50%; right: auto; transform: translateX(-50%); width: min(430px, 78%); }
+  .landing-art img,
+  .landing-art .landing-video { left: 50%; right: auto; transform: translateX(-50%); width: min(430px, 78%); }
 }
 
 /* Nearby Shelters Modern Styling */
@@ -2072,7 +2079,8 @@ button, .button {
   .landing-copy { padding: 96px 24px 24px; }
   .landing-copy h1 { font-size: clamp(40px, 13vw, 62px); }
   .landing-art { min-height: 360px; }
-  .landing-art img { bottom: 0; width: min(390px, 88%); }
+  .landing-art img,
+  .landing-art .landing-video { bottom: 0; width: min(390px, 88%); }
   .landing-card::after { opacity: 0.35; }
   .detail { grid-template-columns: 1fr; }
   .pets-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
