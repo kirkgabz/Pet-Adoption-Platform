@@ -6,9 +6,44 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = "django-insecure-dev-pet-adoption-platform"
-DEBUG = True
-ALLOWED_HOSTS = []
+
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name, default=None):
+    value = os.environ.get(name, "")
+    values = [item.strip() for item in value.replace(";", ",").split(",") if item.strip()]
+    return values or list(default or [])
+
+
+def clean_host(value):
+    return value.replace("https://", "").replace("http://", "").strip("/")
+
+
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-dev-pet-adoption-platform")
+DEBUG = env_bool("DJANGO_DEBUG", default=not env_bool("VERCEL"))
+
+DEFAULT_ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "pet-adoption-platform-woad.vercel.app",
+]
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", DEFAULT_ALLOWED_HOSTS)
+
+for env_name in ("VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
+    vercel_host = clean_host(os.environ.get(env_name, ""))
+    if vercel_host and vercel_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(vercel_host)
+
+CSRF_TRUSTED_ORIGINS = env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    [f"https://{host}" for host in ALLOWED_HOSTS if host not in {"127.0.0.1", "localhost"}],
+)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
