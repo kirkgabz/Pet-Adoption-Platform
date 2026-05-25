@@ -19,23 +19,40 @@
     <img class="auth-mascot cat" src="{% static 'img/cat-login.svg' %}" alt="Cute cat">
     <div class="auth-card">
       <h2>Login</h2>
-      <p class="auth-login-note">
-        Enter your username and password, then choose the role that matches your account.
-      </p>
-      <form class="auth-login-form" method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <div class="auth-login-actions">
-          <button type="submit" name="login_role" value="user" class="primary">Login as User</button>
-          <button type="submit" name="login_role" value="staff" class="secondary">Login as Shelter Staff</button>
+      {% if not login_role %}
+        <p class="auth-login-note">
+          Choose the login type that matches your account.
+        </p>
+        <div class="auth-login-actions auth-role-actions">
+          <a class="button primary" href="{% url 'login' %}?role=user">Login as User</a>
+          <a class="button secondary" href="{% url 'login' %}?role=staff">Login as Shelter Staff</a>
         </div>
-      </form>
-      {% if show_google_login %}
-        <div style="text-align:center;margin:14px 0;color:var(--muted);">or</div>
-        <form class="social-login-form" method="post" action="{% provider_login_url 'google' %}">
+      {% else %}
+        <p class="auth-login-note">
+          {% if login_role == "staff" %}
+            Enter your shelter staff credentials.
+          {% else %}
+            Enter your adopter credentials or continue with Google.
+          {% endif %}
+        </p>
+        <form class="auth-login-form" method="post">
           {% csrf_token %}
-          {% include "registration/partials/google_button.html" %}
+          <input type="hidden" name="login_role" value="{{ login_role }}">
+          {{ form.as_p }}
+          <div class="auth-login-actions">
+            <button type="submit" class="{% if login_role == 'staff' %}secondary{% else %}primary{% endif %}">
+              {% if login_role == "staff" %}Login as Shelter Staff{% else %}Login as User{% endif %}
+            </button>
+          </div>
         </form>
+        {% if show_google_login %}
+          <div style="text-align:center;margin:14px 0;color:var(--muted);">or</div>
+          <form class="social-login-form" method="post" action="{% provider_login_url 'google' %}">
+            {% csrf_token %}
+            {% include "registration/partials/google_button.html" %}
+          </form>
+        {% endif %}
+        <p class="auth-switch"><a href="{% url 'login' %}">Choose another login type</a></p>
       {% endif %}
       <p class="auth-switch">New here? <a href="{% url 'register' %}">Create an adopter or shelter staff account</a></p>
     </div>

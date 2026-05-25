@@ -113,10 +113,12 @@ class RoleBasedLoginView(LoginView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        login_role = self.request.GET.get("role", "user")
+        login_role = self.request.POST.get("login_role") or self.request.GET.get("role")
+        if login_role not in {"user", "staff"}:
+            login_role = None
         context["login_role"] = login_role
         context["google_login_configured"] = is_google_login_configured(self.request)
-        context["show_google_login"] = context["google_login_configured"] and login_role != "staff"
+        context["show_google_login"] = context["google_login_configured"] and login_role == "user"
         return context
 
 
