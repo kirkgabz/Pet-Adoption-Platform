@@ -184,6 +184,11 @@ img { display: block; max-width: 100%; }
   gap: 10px;
   margin: 0 0 16px;
 }
+.auth-login-form,
+.social-login-form {
+  display: grid;
+  gap: 12px;
+}
 .auth-login-actions button {
   min-height: 46px;
   border-radius: 12px;
@@ -1366,6 +1371,7 @@ img { display: block; max-width: 100%; }
 .social-btn .icon { display:inline-grid; place-items:center; width:18px; height:18px; }
 .social-btn.google { border-color: rgba(0,0,0,0.06); }
 .social-btn.google:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+.social-login-form .social-btn { width: 100%; }
 .auth-layout .notice {
   width: min(1320px, 100%);
   margin: 0 auto 16px;

@@ -1,3 +1,5 @@
 Django==5.2.12
+django-allauth[socialaccount]==65.17.0
 Pillow>=10.0
 Faker>=20.0.0
+python-dotenv>=1.0
