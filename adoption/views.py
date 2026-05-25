@@ -113,8 +113,10 @@ class RoleBasedLoginView(LoginView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["login_role"] = self.request.GET.get("role", "user")
+        login_role = self.request.GET.get("role", "user")
+        context["login_role"] = login_role
         context["google_login_configured"] = is_google_login_configured(self.request)
+        context["show_google_login"] = context["google_login_configured"] and login_role != "staff"
         return context
 
 
@@ -524,7 +526,14 @@ def register(request):
             return redirect("pet-list")
     else:
         form = UserRegisterForm()
-    return render(request, "registration/register.html", {"form": form})
+    return render(
+        request,
+        "registration/register.html",
+        {
+            "form": form,
+            "google_login_configured": is_google_login_configured(request),
+        },
+    )
 
 
 def apply_to_adopt(request, pk):

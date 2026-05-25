@@ -185,6 +185,7 @@ img { display: block; max-width: 100%; }
   margin: 0 0 16px;
 }
 .auth-login-form,
+.auth-register-form,
 .social-login-form {
   display: grid;
   gap: 12px;

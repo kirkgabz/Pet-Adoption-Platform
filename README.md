@@ -34,3 +34,6 @@ this local callback URL in the Google console:
 ```text
 http://127.0.0.1:8000/accounts/google/login/callback/
 ```
+
+When configured, the adopter login and signup screens show a Google OAuth
+button. Shelter staff accounts continue to use username and password login.

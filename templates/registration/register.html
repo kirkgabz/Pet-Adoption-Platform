@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static socialaccount %}
 {% block title %}Register{% endblock %}
 {% block body_class %}auth-layout{% endblock %}
 {% block sidebar %}{% endblock %}
@@ -17,82 +17,91 @@
   </div>
   <div class="auth-card-wrap dog-card">
     <img class="auth-mascot dog" src="{% static 'img/dog-signup.svg' %}" alt="Cute dog">
-    <form class="auth-card" method="post">
-      {% csrf_token %}
+    <div class="auth-card">
       <h2>Create Account</h2>
       <p class="auth-login-note">Choose Adopter for pet applications or Shelter Staff to manage shelter listings.</p>
-      {{ form.non_field_errors }}
-      <div class="register-fields">
-        <div class="register-field register-field-full">
-          <label>{{ form.account_type.label }}</label>
-          {{ form.account_type }}
-          {{ form.account_type.errors }}
+      <form class="auth-register-form" method="post">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="register-fields">
+          <div class="register-field register-field-full">
+            <label>{{ form.account_type.label }}</label>
+            {{ form.account_type }}
+            {{ form.account_type.errors }}
+          </div>
+          <label class="register-field">
+            <span>{{ form.username.label }}</span>
+            {{ form.username }}
+            {{ form.username.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.email.label }}</span>
+            {{ form.email }}
+            {{ form.email.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.first_name.label }}</span>
+            {{ form.first_name }}
+            {{ form.first_name.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.last_name.label }}</span>
+            {{ form.last_name }}
+            {{ form.last_name.errors }}
+          </label>
         </div>
-        <label class="register-field">
-          <span>{{ form.username.label }}</span>
-          {{ form.username }}
-          {{ form.username.errors }}
-        </label>
-        <label class="register-field">
-          <span>{{ form.email.label }}</span>
-          {{ form.email }}
-          {{ form.email.errors }}
-        </label>
-        <label class="register-field">
-          <span>{{ form.first_name.label }}</span>
-          {{ form.first_name }}
-          {{ form.first_name.errors }}
-        </label>
-        <label class="register-field">
-          <span>{{ form.last_name.label }}</span>
-          {{ form.last_name }}
-          {{ form.last_name.errors }}
-        </label>
-      </div>
 
-      <section class="staff-fields" data-staff-fields hidden>
-        <p class="eyebrow">Shelter Details</p>
+        <section class="staff-fields" data-staff-fields hidden>
+          <p class="eyebrow">Shelter Details</p>
+          <div class="register-fields">
+            <label class="register-field register-field-full">
+              <span>{{ form.shelter_name.label }}</span>
+              {{ form.shelter_name }}
+              {{ form.shelter_name.errors }}
+            </label>
+            <label class="register-field">
+              <span>{{ form.shelter_phone.label }}</span>
+              {{ form.shelter_phone }}
+              {{ form.shelter_phone.errors }}
+            </label>
+            <label class="register-field">
+              <span>{{ form.shelter_city.label }}</span>
+              {{ form.shelter_city }}
+              {{ form.shelter_city.errors }}
+            </label>
+            <label class="register-field register-field-full">
+              <span>{{ form.shelter_address.label }}</span>
+              {{ form.shelter_address }}
+              {{ form.shelter_address.errors }}
+            </label>
+          </div>
+        </section>
+
         <div class="register-fields">
           <label class="register-field register-field-full">
-            <span>{{ form.shelter_name.label }}</span>
-            {{ form.shelter_name }}
-            {{ form.shelter_name.errors }}
-          </label>
-          <label class="register-field">
-            <span>{{ form.shelter_phone.label }}</span>
-            {{ form.shelter_phone }}
-            {{ form.shelter_phone.errors }}
-          </label>
-          <label class="register-field">
-            <span>{{ form.shelter_city.label }}</span>
-            {{ form.shelter_city }}
-            {{ form.shelter_city.errors }}
+            <span>{{ form.password1.label }}</span>
+            {{ form.password1 }}
+            {{ form.password1.errors }}
+            {% if form.password1.help_text %}<small>{{ form.password1.help_text }}</small>{% endif %}
           </label>
           <label class="register-field register-field-full">
-            <span>{{ form.shelter_address.label }}</span>
-            {{ form.shelter_address }}
-            {{ form.shelter_address.errors }}
+            <span>{{ form.password2.label }}</span>
+            {{ form.password2 }}
+            {{ form.password2.errors }}
+            {% if form.password2.help_text %}<small>{{ form.password2.help_text }}</small>{% endif %}
           </label>
         </div>
-      </section>
-
-      <div class="register-fields">
-        <label class="register-field register-field-full">
-          <span>{{ form.password1.label }}</span>
-          {{ form.password1 }}
-          {{ form.password1.errors }}
-          {% if form.password1.help_text %}<small>{{ form.password1.help_text }}</small>{% endif %}
-        </label>
-        <label class="register-field register-field-full">
-          <span>{{ form.password2.label }}</span>
-          {{ form.password2 }}
-          {{ form.password2.errors }}
-          {% if form.password2.help_text %}<small>{{ form.password2.help_text }}</small>{% endif %}
-        </label>
-      </div>
-      <button class="primary">Sign Up</button>
+        <button class="primary">Sign Up</button>
+      </form>
+      {% if google_login_configured %}
+        <div style="text-align:center;margin:14px 0;color:var(--muted);">or</div>
+        <form class="social-login-form" method="post" action="{% provider_login_url 'google' %}">
+          {% csrf_token %}
+          {% include "registration/partials/google_button.html" %}
+        </form>
+      {% endif %}
       <p class="auth-switch">Already registered? <a href="{% url 'login' %}">Login</a></p>
-    </form>
+    </div>
   </div>
 </section>
 {% endblock %}
