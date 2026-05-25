@@ -33,6 +33,19 @@ except Exception:
 from .models import AdoptionApplication, ConversationMessage, Pet, PersonalityTag, Shelter
 
 
+def is_google_login_configured(request):
+    google_settings = getattr(settings, "SOCIALACCOUNT_PROVIDERS", {}).get("google", {})
+    if google_settings.get("APP") or google_settings.get("APPS"):
+        return True
+
+    try:
+        from allauth.socialaccount.models import SocialApp
+
+        return SocialApp.objects.on_site(request).filter(provider="google").exists()
+    except Exception:
+        return False
+
+
 def staff_shelters_for(user):
     if user.is_superuser:
         return Shelter.objects.all()
@@ -100,8 +113,23 @@ class RoleBasedLoginView(LoginView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["login_role"] = self.request.GET.get("role", "user")
+        login_role = self.request.POST.get("login_role") or self.request.GET.get("role")
+        if login_role not in {"user", "staff"}:
+            login_role = None
+        context["login_role"] = login_role
+        context["google_login_configured"] = is_google_login_configured(self.request)
+        context["show_google_login"] = context["google_login_configured"] and login_role == "user"
         return context
+
+
+def google_login(request):
+    if not is_google_login_configured(request):
+        messages.error(request, "Google login is not configured yet. Use username and password to log in.")
+        return redirect("login")
+
+    from allauth.socialaccount.providers.google.views import oauth2_login
+
+    return oauth2_login(request)
 
 
 class PetListView(LoginRequiredMixin, ListView):
@@ -500,7 +528,14 @@ def register(request):
             return redirect("pet-list")
     else:
         form = UserRegisterForm()
-    return render(request, "registration/register.html", {"form": form})
+    return render(
+        request,
+        "registration/register.html",
+        {
+            "form": form,
+            "google_login_configured": is_google_login_configured(request),
+        },
+    )
 
 
 def apply_to_adopt(request, pk):
