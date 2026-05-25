@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 
 import dj_database_url
@@ -107,10 +108,17 @@ if DATABASE_URL:
         )
     }
 else:
+    sqlite_path = BASE_DIR / "db.sqlite3"
+    if env_bool("VERCEL"):
+        runtime_sqlite_path = Path("/tmp/db.sqlite3")
+        if not runtime_sqlite_path.exists() and sqlite_path.exists():
+            shutil.copyfile(sqlite_path, runtime_sqlite_path)
+        sqlite_path = runtime_sqlite_path
+
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "NAME": sqlite_path,
         }
     }
 
