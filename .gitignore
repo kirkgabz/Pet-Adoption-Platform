@@ -48,3 +48,4 @@ coverage.xml
 
 # Static files
 staticfiles/
+.vercel

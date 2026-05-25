@@ -46,9 +46,14 @@ Set these environment variables in Vercel:
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=pet-adoption-platform-woad.vercel.app
 DJANGO_CSRF_TRUSTED_ORIGINS=https://pet-adoption-platform-woad.vercel.app
+DATABASE_URL=postgres://...
 GOOGLE_CLIENT_ID=your-client-id
 GOOGLE_CLIENT_SECRET=your-client-secret
 ```
+
+Use Vercel Marketplace Postgres, such as Neon, for `DATABASE_URL`. After the
+database is connected to the Vercel project, deployments run migrations during
+the build step.
 
 Also add this production callback URL to the Google OAuth client:
 
