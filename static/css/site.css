@@ -185,8 +185,7 @@ img { display: block; max-width: 100%; }
   margin: 0 0 16px;
 }
 .auth-login-form,
-.auth-register-form,
-.social-login-form {
+.auth-register-form {
   display: grid;
   gap: 12px;
 }
@@ -1380,9 +1379,13 @@ img { display: block; max-width: 100%; }
 .social-btn.google { border-color: rgba(0,0,0,0.06); }
 .social-btn.google:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
 .social-login-form {
+  display: flex;
   width: 100%;
   justify-self: stretch;
-  justify-items: center;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
 }
 .social-login-form .social-btn {
   width: auto;
