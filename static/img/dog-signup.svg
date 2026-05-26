@@ -4,13 +4,13 @@
   <path d="M295 70c36-34 83-17 83 28 0 44-46 83-87 61l4-89Z" fill="#C98754"/>
   <ellipse cx="210" cy="106" rx="112" ry="93" fill="#F2BE73"/>
   <ellipse cx="210" cy="106" rx="86" ry="76" fill="#FFE1A5"/>
-  <circle cx="176" cy="101" r="14" fill="#24203B"/>
-  <circle cx="244" cy="101" r="14" fill="#24203B"/>
+  <circle cx="176" cy="101" r="14" fill="#2A241C"/>
+  <circle cx="244" cy="101" r="14" fill="#2A241C"/>
   <circle cx="171" cy="96" r="5" fill="#FFFFFF"/>
   <circle cx="239" cy="96" r="5" fill="#FFFFFF"/>
-  <ellipse cx="210" cy="128" rx="28" ry="22" fill="#4A3041"/>
-  <path d="M210 146v16" stroke="#4A3041" stroke-width="7" stroke-linecap="round"/>
-  <path d="M184 169c13 14 39 14 52 0" stroke="#4A3041" stroke-width="7" stroke-linecap="round"/>
+  <ellipse cx="210" cy="128" rx="28" ry="22" fill="#4F3425"/>
+  <path d="M210 146v16" stroke="#4F3425" stroke-width="7" stroke-linecap="round"/>
+  <path d="M184 169c13 14 39 14 52 0" stroke="#4F3425" stroke-width="7" stroke-linecap="round"/>
   <circle cx="152" cy="130" r="23" fill="#E5A962"/>
   <circle cx="268" cy="130" r="23" fill="#E5A962"/>
   <g transform="translate(30 149)">
