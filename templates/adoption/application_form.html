@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Adoption Application{% endblock %}
 {% block content %}
-<section class="panel narrow">
-  <h1>Apply to Adopt {{ pet.name }}</h1>
+<section class="panel narrow form-panel adoption-form-page">
+  <div class="form-heading">
+    <p class="eyebrow">Adoption Application</p>
+    <h1>Apply to Adopt {{ pet.name }}</h1>
+    <p class="muted">Share a little about your home and pet care experience so the shelter can review your fit.</p>
+  </div>
   <div class="application-preview-summary">
     <div class="mini-avatar">{{ pet.name|first|upper }}</div>
     <div>

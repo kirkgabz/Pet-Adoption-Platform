@@ -1,12 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Pet Form{% endblock %}
 {% block content %}
-<section class="panel">
-  <h1>{% if object %}Edit Pet{% else %}Post Pet{% endif %}</h1>
-  <form method="post" enctype="multipart/form-data">
+<section class="panel form-panel">
+  <div class="form-heading">
+    <p class="eyebrow">Shelter Pet Management</p>
+    <h1>{% if object %}Edit Pet{% else %}Post a Pet{% endif %}</h1>
+    <p class="muted">{% if object %}Keep the listing accurate so adopters know what to expect.{% else %}Create a clear, friendly profile for a pet who is ready for adoption.{% endif %}</p>
+  </div>
+  <form class="object-form" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
-    <button class="primary">{% if object %}Save{% else %}Post{% endif %}</button>
+    <div class="form-actions">
+      <a class="button" href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'pet-list' %}{% endif %}">Cancel</a>
+      <button class="primary">{% if object %}Save Changes{% else %}Post Pet{% endif %}</button>
+    </div>
   </form>
 </section>
 {% endblock %}

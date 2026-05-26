@@ -1,29 +1,97 @@
 {% extends "base.html" %}
 {% block title %}Application{% endblock %}
 {% block content %}
-<section class="panel">
-  <div class="split"><h1>{{ application.pet.name }} Application</h1><span class="status">{{ application.get_status_display }}</span></div>
-  <p><strong>Applicant:</strong> {{ application.applicant.get_full_name|default:application.applicant.username }}</p>
-  <p><strong>Home:</strong> {{ application.home_type }}{% if application.has_yard %}, has yard{% endif %}</p>
-  <p><strong>Experience:</strong> {{ application.experience }}</p>
-  <p><strong>Reason:</strong> {{ application.reason }}</p>
-  {% if user.is_staff %}
-    <form class="filters" method="post">{% csrf_token %}{{ status_form.status }}<button>Update Status</button></form>
-  {% endif %}
-  <h2>Messages</h2>
-  <div class="messages">
-    {% for message in conversation %}
-      <div class="message {% if message.sender == user %}mine{% endif %}">
-        <strong>{{ message.sender.username }}</strong>
-        <p>{{ message.body }}</p>
-        <small>{{ message.created_at }}</small>
+<section class="application-detail-page">
+  <div class="panel application-status-panel">
+    <div class="split">
+      <div>
+        <p class="eyebrow">{% if user.is_staff %}Shelter Application Review{% else %}Application Status{% endif %}</p>
+        <h1>{{ application.pet.name }} Application</h1>
       </div>
-    {% empty %}<p>No messages yet.</p>{% endfor %}
+      <span class="status">{{ application.get_status_display }}</span>
+    </div>
+    <ol class="status-tracker">
+      <li class="{% if application.status == 'submitted' %}active{% endif %}">Submitted</li>
+      <li class="{% if application.status == 'reviewing' %}active{% endif %}">Reviewing</li>
+      <li class="{% if application.status == 'approved' %}active{% endif %}">Approved</li>
+      <li class="{% if application.status == 'completed' %}active{% endif %}">Completed</li>
+      {% if application.status == 'declined' %}<li class="active declined">Declined</li>{% endif %}
+    </ol>
   </div>
-  <form method="post">{% csrf_token %}{{ message_form.as_p }}<button class="primary">Send</button></form>
-  <div class="actions">
-    {% if user.is_staff %}<a class="button" href="{% url 'application-update' application.pk %}">Edit Status</a>{% endif %}
-    <a class="button danger" href="{% url 'application-delete' application.pk %}">Delete</a>
+
+  <div class="application-layout">
+    <section class="panel application-review-card">
+      <div class="application-preview-summary">
+        <div class="mini-avatar">{{ application.pet.name|first|upper }}</div>
+        <div>
+          <strong>{{ application.pet.name }}</strong>
+          <small>{{ application.pet.get_species_display }}{% if application.pet.breed %} / {{ application.pet.breed }}{% endif %} / {{ application.pet.shelter.name }}</small>
+        </div>
+      </div>
+
+      <div class="application-info-grid">
+        <div><span>Applicant</span><strong>{{ application.applicant.get_full_name|default:application.applicant.username }}</strong></div>
+        <div><span>Home</span><strong>{{ application.home_type }}{% if application.has_yard %}, has yard{% endif %}</strong></div>
+        <div><span>Submitted</span><strong>{{ application.created_at|date:"M j, Y" }}</strong></div>
+      </div>
+
+      <section class="detail-section">
+        <h2>Experience</h2>
+        <p>{{ application.experience|linebreaksbr }}</p>
+      </section>
+      <section class="detail-section">
+        <h2>Why this pet?</h2>
+        <p>{{ application.reason|linebreaksbr }}</p>
+      </section>
+
+      {% if user.is_staff %}
+        <form class="review-actions" method="post">
+          {% csrf_token %}
+          <button class="primary" name="status" value="approved">Approve</button>
+          <button class="button" name="status" value="reviewing">Mark Reviewing</button>
+          <button class="danger" name="status" value="declined">Decline</button>
+        </form>
+        <form class="status-select-form" method="post">
+          {% csrf_token %}
+          <label class="filter-control">
+            <span>Set detailed status</span>
+            {{ status_form.status }}
+          </label>
+          <button>Update Status</button>
+        </form>
+      {% endif %}
+
+      <div class="actions">
+        <a class="button" href="{% url 'application-list' %}">Back to Applications</a>
+        <a class="button danger" href="{% url 'application-delete' application.pk %}">Delete</a>
+      </div>
+    </section>
+
+    <section class="panel messages-panel">
+      <div class="panel-title">
+        <div>
+          <p class="eyebrow">Messages</p>
+          <h2>{% if user.is_staff %}Conversation with {{ application.applicant.username }}{% else %}Conversation with {{ application.pet.shelter.name }}{% endif %}</h2>
+        </div>
+      </div>
+      <div class="messages">
+        {% for message in conversation %}
+          <div class="message {% if message.sender == user %}mine{% endif %}">
+            <strong>{% if message.sender == user %}You{% else %}{{ message.sender.username }}{% endif %}</strong>
+            <p>{{ message.body|linebreaksbr }}</p>
+            <small>{{ message.created_at|date:"M j, Y g:i A" }}</small>
+          </div>
+        {% empty %}
+          <div class="empty-message">No messages yet. Start the conversation with a helpful update.</div>
+        {% endfor %}
+      </div>
+      <form class="message-composer" method="post">
+        {% csrf_token %}
+        {{ message_form.body }}
+        {{ message_form.body.errors }}
+        <button class="primary">Send Message</button>
+      </form>
+    </section>
   </div>
 </section>
 {% endblock %}

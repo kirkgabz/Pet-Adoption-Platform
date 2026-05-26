@@ -1,30 +1,60 @@
 {% extends "base.html" %}
 {% block title %}{{ object.name }}{% endblock %}
 {% block content %}
-<article class="detail">
-  {% if object.photo %}<img class="detail-img" src="{{ object.photo.url }}" alt="{{ object.name }}">{% endif %}
-  <div>
+<article class="pet-detail-page">
+  <section class="pet-detail-media">
+    {% if object.photo %}
+      <img class="detail-img" src="{{ object.photo.url }}" alt="{{ object.name }}">
+    {% else %}
+      <div class="detail-placeholder">{{ object.name|first|upper }}</div>
+    {% endif %}
+  </section>
+
+  <section class="panel pet-detail-content">
     <div class="split">
-      <h1>{{ object.name }}</h1>
+      <div>
+        <p class="eyebrow">Pet Profile</p>
+        <h1>{{ object.name }}</h1>
+      </div>
       <span class="status">{{ object.get_status_display }}</span>
     </div>
-    <p class="lead">{{ object.get_species_display }}{% if object.breed %} • {{ object.breed }}{% endif %} • {{ object.age }} years</p>
-    <p>{{ object.description }}</p>
-    <div class="tags">{% for tag in object.personality_tags.all %}<span>{{ tag.name }}</span>{% endfor %}</div>
-    <p><strong>Shelter:</strong> <a href="{{ object.shelter.get_absolute_url }}">{{ object.shelter.name }}</a></p>
-    <div class="actions">
+
+    <div class="pet-facts">
+      <div><strong>{{ object.get_species_display }}</strong><span>Species</span></div>
+      <div><strong>{% if object.breed %}{{ object.breed }}{% else %}Mixed{% endif %}</strong><span>Breed</span></div>
+      <div><strong>{{ object.age }}</strong><span>Years old</span></div>
+      <div><strong>{{ object.shelter.city|default:"Listed" }}</strong><span>Location</span></div>
+    </div>
+
+    <section class="detail-section">
+      <h2>About {{ object.name }}</h2>
+      <p>{{ object.description|linebreaksbr }}</p>
+    </section>
+
+    <section class="detail-section">
+      <h2>Personality</h2>
+      <div class="tags">{% for tag in object.personality_tags.all %}<span>{{ tag.name }}</span>{% empty %}<span>Ready for a family</span>{% endfor %}</div>
+    </section>
+
+    <section class="shelter-mini-card">
+      <div>
+        <p class="eyebrow">Shelter</p>
+        <h2><a href="{{ object.shelter.get_absolute_url }}">{{ object.shelter.name }}</a></h2>
+        <p>{{ object.shelter.address }}, {{ object.shelter.city }}</p>
+      </div>
+    </section>
+
+    <div class="actions detail-actions">
       {% if user.is_authenticated and not user.is_staff and object.posted_by != user and object.status == 'available' %}
         <a class="button primary" href="{% url 'application-create' object.pk %}">Apply to Adopt</a>
       {% elif object.posted_by == user and not user.is_staff %}
         <span class="note">You cannot apply to your own pet listing.</span>
       {% endif %}
       {% if can_manage_pet %}
-        <a class="button" href="{% url 'pet-update' object.pk %}">Edit</a>
-      {% endif %}
-      {% if can_manage_pet %}
+        <a class="button" href="{% url 'pet-update' object.pk %}">Edit Pet</a>
         <a class="button danger" href="{% url 'pet-delete' object.pk %}">Delete</a>
       {% endif %}
     </div>
-  </div>
+  </section>
 </article>
 {% endblock %}

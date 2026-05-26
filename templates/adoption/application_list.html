@@ -1,14 +1,39 @@
 {% extends "base.html" %}
 {% block title %}Applications{% endblock %}
 {% block content %}
-<h1>{% if user.is_staff %}Adoption Applications{% else %}My Applications{% endif %}</h1>
-<div class="list">
+<div class="page-head">
+  <div>
+    <p class="eyebrow">{% if user.is_staff %}Shelter Review{% else %}Adoption Status{% endif %}</p>
+    <h1>{% if user.is_staff %}Adoption Applications{% else %}My Applications{% endif %}</h1>
+    <p class="muted">{% if user.is_staff %}Review adopter requests and keep applicants updated.{% else %}Track your adoption requests and continue conversations with shelters.{% endif %}</p>
+  </div>
+</div>
+<div class="list application-list">
   {% for application in object_list %}
-    <article class="row-card">
-      <div><h2><a href="{{ application.get_absolute_url }}">{{ application.pet.name }}</a></h2><p>{{ application.applicant.username }} • {{ application.pet.shelter.name }}</p></div>
-      <span class="status">{{ application.get_status_display }}</span>
+    <article class="row-card application-row">
+      <div>
+        <h2><a href="{{ application.get_absolute_url }}">{{ application.pet.name }}</a></h2>
+        <p>
+          {% if user.is_staff %}
+            {{ application.applicant.get_full_name|default:application.applicant.username }} • {{ application.pet.shelter.name }}
+          {% else %}
+            {{ application.pet.shelter.name }} • {{ application.pet.get_species_display }}
+          {% endif %}
+        </p>
+      </div>
+      <div class="application-row-actions">
+        <span class="status">{{ application.get_status_display }}</span>
+        <a class="button" href="{{ application.get_absolute_url }}">{% if user.is_staff %}Review{% else %}View Status{% endif %}</a>
+      </div>
     </article>
-  {% empty %}<p>{% if user.is_staff %}No adopter applications for your shelter pets yet.{% else %}No applications yet.{% endif %}</p>{% endfor %}
+  {% empty %}
+    <section class="empty-state">
+      <p class="empty-icon">🐾</p>
+      <h2>{% if user.is_staff %}No applications yet{% else %}No applications yet{% endif %}</h2>
+      <p>{% if user.is_staff %}Applications from adopters will appear here once they apply for your pets.{% else %}Browse available pets and apply when you find a good match.{% endif %}</p>
+      {% if not user.is_staff %}<a class="button primary" href="{% url 'available-pets' %}">Browse Pets</a>{% endif %}
+    </section>
+  {% endfor %}
 </div>
 {% include "adoption/partials/pagination.html" %}
 {% endblock %}

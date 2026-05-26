@@ -1,7 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="panel">
-  <h1>{% if object %}Edit Shelter{% elif user.is_staff and not user.is_superuser %}Create Shelter Profile{% else %}Add Shelter{% endif %}</h1>
-  <form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary">Save</button></form>
+<section class="panel form-panel">
+  <div class="form-heading">
+    <p class="eyebrow">Shelter Profile</p>
+    <h1>{% if object %}Edit Shelter{% elif user.is_staff and not user.is_superuser %}Create Shelter Profile{% else %}Add Shelter{% endif %}</h1>
+    <p class="muted">Keep contact and location details clear so adopters know where to reach you.</p>
+  </div>
+  <form class="object-form" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="form-actions">
+      <a class="button" href="{% url 'shelter-list' %}">Cancel</a>
+      <button class="primary">Save Shelter</button>
+    </div>
+  </form>
 </section>
 {% endblock %}

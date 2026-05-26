@@ -17,10 +17,18 @@
     </article>
   {% empty %}
     {% if user.is_staff and not user.is_superuser and not has_linked_shelter %}
-      <p>Complete your shelter profile before posting pets.</p>
-      <a class="button primary" href="{% url 'shelter-create' %}">Create Shelter Profile</a>
+      <section class="empty-state">
+        <p class="empty-icon">🐾</p>
+        <h2>Create your shelter profile</h2>
+        <p>Complete your shelter profile before posting pets.</p>
+        <a class="button primary" href="{% url 'shelter-create' %}">Create Shelter Profile</a>
+      </section>
     {% else %}
-      <p>No shelters found.</p>
+      <section class="empty-state">
+        <p class="empty-icon">⌂</p>
+        <h2>No shelters found</h2>
+        <p>Try adjusting your search or check back later.</p>
+      </section>
     {% endif %}
   {% endfor %}
 </div>

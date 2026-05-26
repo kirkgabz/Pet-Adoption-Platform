@@ -22,12 +22,27 @@
 
     <div class="landing-copy">
       <p class="rating-line">For shelters, adopters, and pets waiting for home</p>
-      <h1>Find Pets. Apply Easily. Adopt With Care.</h1>
+      <h1>Pet Adoption Platform</h1>
       <p>
-        A friendly adoption platform where shelters can post pets, adopters can apply, and every message, personality tag, and application status stays organized from first hello to forever home.
+        Browse adoptable pets, send applications, message shelters, and track every adoption step in one friendly place.
       </p>
       <div class="landing-actions">
-        <a class="button primary landing-primary" href="{% url 'login' %}">Start</a>
+        <a class="button primary landing-primary" href="{% url 'available-pets' %}">Browse Pets</a>
+        <a class="button landing-secondary" href="{% url 'register' %}">Create Account</a>
+      </div>
+      <div class="landing-hero-cards" aria-label="Platform highlights">
+        <div>
+          <strong>Browse</strong>
+          <span>Find pets by city, species, and personality.</span>
+        </div>
+        <div>
+          <strong>Apply</strong>
+          <span>Submit adoption forms without confusing steps.</span>
+        </div>
+        <div>
+          <strong>Track</strong>
+          <span>Follow applications, messages, and shelter updates.</span>
+        </div>
       </div>
     </div>
   </div>

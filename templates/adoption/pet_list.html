@@ -7,13 +7,8 @@
       <div>
         <p class="eyebrow">Dashboard</p>
         <h1>{% if user.is_staff %}Shelter Dashboard{% else %}Welcome back{% if user.is_authenticated %}, {{ user.first_name|default:user.username }}{% endif %}{% endif %}</h1>
+        <span class="role-pill">{% if user.is_staff %}Shelter Staff{% else %}Adopter{% endif %}</span>
       </div>
-      {% if not user.is_staff %}
-      <form class="dash-search" method="get" action="{% url 'available-pets' %}">
-        <input name="q" placeholder="Search pets, breeds, notes" value="{{ request.GET.q }}">
-        <button type="submit">Search</button>
-      </form>
-      {% endif %}
       <div class="dash-actions">
         {% if not user.is_staff %}
         <a class="button primary" href="{% url 'available-pets' %}">Find Pets</a>
@@ -48,7 +43,6 @@
           {% else %}
             <h2>Find pets ready for a home.</h2>
             <p>Browse available pets, learn about their personality, and apply when you find the right match.</p>
-            <a class="button primary" href="{% url 'available-pets' %}">Browse Pets</a>
           {% endif %}
         {% endif %}
       </div>
@@ -68,6 +62,23 @@
         </div>
       </div>
     </section>
+
+    <nav class="quick-actions dashboard-actions" aria-label="Dashboard quick actions">
+      {% if user.is_staff %}
+        {% if shelter_count == 0 %}
+          <a href="{% url 'shelter-create' %}"><span>🐾</span>Create Shelter</a>
+        {% else %}
+          <a href="{% url 'pet-create' %}"><span>+</span>New Pet</a>
+        {% endif %}
+        <a href="{% url 'pet-list' %}"><span>☰</span>Manage Pets</a>
+        <a href="{% url 'application-list' %}"><span>✓</span>Review Apps</a>
+        <a href="{% url 'shelter-list' %}"><span>⌂</span>Your Shelter</a>
+      {% else %}
+        <a href="{% url 'application-list' %}"><span>✓</span>Track Status</a>
+        <a href="{% url 'nearby-shelters' %}"><span>⌂</span>Nearby Shelters</a>
+        <a href="{% url 'shelter-list' %}"><span>?</span>Meet Shelters</a>
+      {% endif %}
+    </nav>
 
     <div class="dashboard-panels">
       <section class="panel-card">
