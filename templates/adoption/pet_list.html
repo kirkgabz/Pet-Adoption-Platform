@@ -15,9 +15,7 @@
       </form>
       {% endif %}
       <div class="dash-actions">
-        {% if user.is_staff %}
-        <a class="button primary" href="{% url 'pet-create' %}">Post Pet</a>
-        {% else %}
+        {% if not user.is_staff %}
         <a class="button primary" href="{% url 'available-pets' %}">Find Pets</a>
         {% endif %}
       </div>
@@ -47,7 +45,6 @@
           {% if user.is_staff %}
             <h2>Start your shelter listings.</h2>
             <p>Post pets for adoption and review applications from one focused shelter workspace.</p>
-            <a class="button primary" href="{% url 'pet-create' %}">Post First Pet</a>
           {% else %}
             <h2>Find pets ready for a home.</h2>
             <p>Browse available pets, learn about their personality, and apply when you find the right match.</p>
@@ -76,9 +73,7 @@
       <section class="panel-card">
         <div class="panel-title">
           <h2>{{ dashboard_pet_title }}</h2>
-          {% if user.is_staff %}
-          <a class="button primary preview-action" href="{% url 'pet-create' %}">Post Pet</a>
-          {% else %}
+          {% if not user.is_staff %}
           <a class="button primary preview-action" href="{% url 'available-pets' %}">View all</a>
           {% endif %}
         </div>

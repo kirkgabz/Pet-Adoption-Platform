@@ -343,17 +343,19 @@ class PetCreateView(StaffRequiredMixin, CreateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated and request.user.is_staff and not request.user.is_superuser:
             if not staff_shelters_for(request.user).exists():
-                messages.error(request, "Add your shelter details before posting pets.")
+                messages.error(request, "Complete your shelter profile before posting pets.")
                 return redirect("shelter-create")
         return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
+        kwargs["include_status"] = False
         return kwargs
 
     def form_valid(self, form):
         form.instance.posted_by = self.request.user
+        form.instance.status = Pet.Status.AVAILABLE
         messages.success(self.request, "Pet posted for adoption.")
         return super().form_valid(form)
 
@@ -400,6 +402,13 @@ class ShelterListView(ListView):
             queryset = queryset.filter(Q(name__icontains=query) | Q(city__icontains=query) | Q(address__icontains=query))
         return queryset
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["has_linked_shelter"] = True
+        if self.request.user.is_authenticated and self.request.user.is_staff and not self.request.user.is_superuser:
+            context["has_linked_shelter"] = staff_shelters_for(self.request.user).exists()
+        return context
+
 
 class ShelterDetailView(DetailView):
     model = Shelter
@@ -414,6 +423,18 @@ class ShelterCreateView(StaffRequiredMixin, CreateView):
     model = Shelter
     form_class = ShelterForm
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and request.user.is_staff and not request.user.is_superuser:
+            if staff_shelters_for(request.user).exists():
+                messages.info(request, "Your shelter profile already exists. You can edit it from here.")
+                return redirect("shelter-list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
     def form_valid(self, form):
         if not self.request.user.is_superuser:
             form.instance.email = self.request.user.email
@@ -427,6 +448,11 @@ class ShelterUpdateView(StaffRequiredMixin, UpdateView):
 
     def get_queryset(self):
         return staff_shelters_for(self.request.user)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
     def form_valid(self, form):
         if not self.request.user.is_superuser:

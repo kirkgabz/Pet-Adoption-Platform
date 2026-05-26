@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="panel">
-  <h1>{% if object %}Edit Shelter{% else %}Add Shelter{% endif %}</h1>
+  <h1>{% if object %}Edit Shelter{% elif user.is_staff and not user.is_superuser %}Create Shelter Profile{% else %}Add Shelter{% endif %}</h1>
   <form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary">Save</button></form>
 </section>
 {% endblock %}

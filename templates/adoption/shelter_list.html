@@ -2,8 +2,11 @@
 {% block title %}Shelters{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>{% if user.is_staff %}Your Shelter{% else %}Shelters{% endif %}</h1>
-  {% if user.is_staff %}<a class="button primary" href="{% url 'shelter-create' %}">Add Shelter</a>{% endif %}
+  <h1>{% if user.is_staff and not user.is_superuser %}Your Shelter{% else %}Shelters{% endif %}</h1>
+  {% if user.is_superuser %}<a class="button primary" href="{% url 'shelter-create' %}">Add Shelter</a>{% endif %}
+  {% if user.is_staff and not user.is_superuser and not has_linked_shelter %}
+    <a class="button primary" href="{% url 'shelter-create' %}">Create Shelter Profile</a>
+  {% endif %}
 </div>
 <form class="filters" method="get"><input class="field" name="q" placeholder="Search shelter or city" value="{{ request.GET.q }}"><button>Search</button></form>
 <div class="list">
@@ -12,7 +15,14 @@
       <div><h2><a href="{{ shelter.get_absolute_url }}">{{ shelter.name }}</a></h2><p>{{ shelter.address }}, {{ shelter.city }}</p></div>
       <span>{{ shelter.email }}</span>
     </article>
-  {% empty %}<p>No shelters found.</p>{% endfor %}
+  {% empty %}
+    {% if user.is_staff and not user.is_superuser and not has_linked_shelter %}
+      <p>Complete your shelter profile before posting pets.</p>
+      <a class="button primary" href="{% url 'shelter-create' %}">Create Shelter Profile</a>
+    {% else %}
+      <p>No shelters found.</p>
+    {% endif %}
+  {% endfor %}
 </div>
 {% include "adoption/partials/pagination.html" %}
 {% endblock %}
