@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 
-from .models import AdoptionApplication, ConversationMessage, Pet, PersonalityTag, Shelter
+from .models import AdopterProfile, AdoptionApplication, ConversationMessage, Pet, PersonalityTag, Shelter
 
 
 class BootstrapFormMixin:
@@ -25,28 +25,8 @@ class UserRegisterForm(BootstrapFormMixin, UserCreationForm):
         choices=((ADOPTER, "Adopter"), (STAFF, "Shelter Staff")),
         initial=ADOPTER,
         label="Account type",
-        help_text="Choose Shelter Staff if you manage pet listings for a shelter.",
+        help_text="Shelter Staff accounts complete shelter setup after signup.",
         widget=forms.RadioSelect(attrs={"class": "account-type-options"}),
-    )
-    shelter_name = forms.CharField(
-        required=False,
-        label="Shelter name",
-        widget=forms.TextInput(attrs={"placeholder": "Shelter or rescue organization name"}),
-    )
-    shelter_phone = forms.CharField(
-        required=False,
-        label="Shelter contact number",
-        widget=forms.TextInput(attrs={"placeholder": "Phone number"}),
-    )
-    shelter_address = forms.CharField(
-        required=False,
-        label="Shelter address",
-        widget=forms.TextInput(attrs={"placeholder": "Street address"}),
-    )
-    shelter_city = forms.CharField(
-        required=False,
-        label="Shelter city",
-        widget=forms.TextInput(attrs={"placeholder": "City"}),
     )
 
     class Meta:
@@ -57,10 +37,6 @@ class UserRegisterForm(BootstrapFormMixin, UserCreationForm):
             "email",
             "first_name",
             "last_name",
-            "shelter_name",
-            "shelter_phone",
-            "shelter_address",
-            "shelter_city",
             "password1",
             "password2",
         ]
@@ -69,40 +45,11 @@ class UserRegisterForm(BootstrapFormMixin, UserCreationForm):
         super().__init__(*args, **kwargs)
         self._style_fields()
 
-    def clean(self):
-        cleaned_data = super().clean()
-        if cleaned_data.get("account_type") == self.STAFF:
-            required_fields = {
-                "shelter_name": "Enter the shelter name.",
-                "shelter_phone": "Enter the shelter contact number.",
-                "shelter_address": "Enter the shelter address.",
-                "shelter_city": "Enter the shelter city.",
-            }
-            for field_name, message in required_fields.items():
-                if not cleaned_data.get(field_name):
-                    self.add_error(field_name, message)
-        return cleaned_data
-
     def save(self, commit=True):
         user = super().save(commit=False)
         user.is_staff = self.cleaned_data.get("account_type") == self.STAFF
         if commit:
             user.save()
-            if user.is_staff:
-                shelter_name = self.cleaned_data["shelter_name"]
-                shelter = Shelter.objects.filter(name__iexact=shelter_name).first()
-                shelter_data = {
-                    "email": user.email,
-                    "phone": self.cleaned_data["shelter_phone"],
-                    "address": self.cleaned_data["shelter_address"],
-                    "city": self.cleaned_data["shelter_city"],
-                }
-                if shelter:
-                    for field_name, value in shelter_data.items():
-                        setattr(shelter, field_name, value)
-                    shelter.save(update_fields=[*shelter_data.keys()])
-                else:
-                    Shelter.objects.create(name=shelter_name, **shelter_data)
         return user
 
 
@@ -119,7 +66,8 @@ class UserUpdateForm(BootstrapFormMixin, forms.ModelForm):
 class ShelterForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Shelter
-        fields = ["name", "email", "phone", "address", "city", "latitude", "longitude", "description"]
+        fields = ["name", "email", "phone", "address", "city", "latitude", "longitude", "description", "photo"]
+        labels = {"photo": "Photo/logo"}
 
     def __init__(self, *args, **kwargs):
         user = kwargs.pop("user", None)
@@ -223,6 +171,35 @@ class PetForm(BootstrapFormMixin, forms.ModelForm):
                 tag = PersonalityTag.objects.create(name=tag_name)
             tags.append(tag)
         pet.personality_tags.set(tags)
+
+
+class AdopterProfileForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = AdopterProfile
+        fields = ["city", "preferred_species", "home_type", "experience"]
+        labels = {
+            "city": "City or location",
+            "preferred_species": "Preferred species",
+            "home_type": "Home type",
+            "experience": "Pet care experience",
+        }
+        widgets = {
+            "city": forms.TextInput(attrs={"placeholder": "City, barangay, or nearby area"}),
+            "home_type": forms.TextInput(attrs={"placeholder": "Apartment, house, condo, townhouse..."}),
+            "experience": forms.Textarea(
+                attrs={
+                    "rows": 4,
+                    "placeholder": "Tell shelters about pets you have cared for before.",
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.required = True
+        self.fields["preferred_species"].choices = [("", "Choose a preferred species")] + list(Pet.Species.choices)
+        self._style_fields()
 
 
 class AdoptionApplicationForm(BootstrapFormMixin, forms.ModelForm):

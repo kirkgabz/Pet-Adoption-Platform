@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+<section class="adopter-profile-page">
+  {% url 'pet-list' as profile_back_url %}
+  {% include "adoption/partials/back_link.html" with back_url=profile_back_url back_label="Back to Dashboard" %}
+  <header class="page-head">
+    <div>
+      <p class="eyebrow">Profile</p>
+      <h1>Your Profile</h1>
+      <p class="muted">Keep your adoption details current so future application forms start with the right information.</p>
+    </div>
+  </header>
+
+  <section class="panel form-panel adopter-profile-panel">
+    <form class="object-form adopter-profile-form" method="post">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="register-fields">
+        <label class="register-field">
+          <span>{{ form.city.label }}</span>
+          {{ form.city }}
+          {{ form.city.errors }}
+        </label>
+        <label class="register-field">
+          <span>{{ form.preferred_species.label }}</span>
+          {{ form.preferred_species }}
+          {{ form.preferred_species.errors }}
+        </label>
+        <label class="register-field register-field-full">
+          <span>{{ form.home_type.label }}</span>
+          {{ form.home_type }}
+          {{ form.home_type.errors }}
+        </label>
+        <label class="register-field register-field-full">
+          <span>{{ form.experience.label }}</span>
+          {{ form.experience }}
+          {{ form.experience.errors }}
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <a class="button" href="{% url 'available-pets' %}">Browse Pets</a>
+        <button class="primary">Save Profile</button>
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}

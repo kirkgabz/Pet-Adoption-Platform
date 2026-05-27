@@ -2,6 +2,7 @@
 {% block title %}Adoption Application{% endblock %}
 {% block content %}
 <section class="panel narrow form-panel adoption-form-page">
+  {% include "adoption/partials/back_link.html" with back_url=pet.get_absolute_url back_label="Back to Pet" %}
   <div class="form-heading">
     <p class="eyebrow">Adoption Application</p>
     <h1>Apply to Adopt {{ pet.name }}</h1>
@@ -38,7 +39,7 @@
       </label>
     </div>
     <div class="pet-preview-actions">
-      <a class="button" href="{{ pet.get_absolute_url }}">Back</a>
+      <a class="button" href="{{ pet.get_absolute_url }}">Cancel</a>
       <button class="primary">Submit Application</button>
     </div>
   </form>

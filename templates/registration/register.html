@@ -18,8 +18,12 @@
   <div class="auth-card-wrap dog-card">
     <img class="auth-mascot dog" src="{% static 'img/dog-signup.svg' %}" alt="Cute dog">
     <div class="auth-card">
+      <a class="auth-back-button" href="{% url 'home' %}" onclick="if (document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }">
+        <span aria-hidden="true">&larr;</span>
+        <span>Back</span>
+      </a>
       <h2>Create Account</h2>
-      <p class="auth-login-note">Choose Adopter for pet applications or Shelter Staff to manage shelter listings.</p>
+      <p class="auth-login-note">Choose Adopter for pet applications or Shelter Staff to set up shelter listings after signup.</p>
       <form class="auth-register-form" method="post">
         {% csrf_token %}
         {{ form.non_field_errors }}
@@ -50,32 +54,6 @@
             {{ form.last_name.errors }}
           </label>
         </div>
-
-        <section class="staff-fields" data-staff-fields hidden>
-          <p class="eyebrow">Shelter Details</p>
-          <div class="register-fields">
-            <label class="register-field register-field-full">
-              <span>{{ form.shelter_name.label }}</span>
-              {{ form.shelter_name }}
-              {{ form.shelter_name.errors }}
-            </label>
-            <label class="register-field">
-              <span>{{ form.shelter_phone.label }}</span>
-              {{ form.shelter_phone }}
-              {{ form.shelter_phone.errors }}
-            </label>
-            <label class="register-field">
-              <span>{{ form.shelter_city.label }}</span>
-              {{ form.shelter_city }}
-              {{ form.shelter_city.errors }}
-            </label>
-            <label class="register-field register-field-full">
-              <span>{{ form.shelter_address.label }}</span>
-              {{ form.shelter_address }}
-              {{ form.shelter_address.errors }}
-            </label>
-          </div>
-        </section>
 
         <div class="register-fields">
           <label class="register-field register-field-full">
@@ -111,22 +89,20 @@
 {% block extra_js %}
 <script>
   (function(){
-    const staffFields = document.querySelector('[data-staff-fields]');
     const googleLogin = document.querySelector('[data-adopter-google-login]');
     const accountInputs = document.querySelectorAll('input[name="account_type"]');
-    if (!staffFields || !accountInputs.length) return;
+    if (!accountInputs.length) return;
 
-    function syncStaffFields(){
+    function syncAccountType(){
       const selected = document.querySelector('input[name="account_type"]:checked');
       const isStaff = selected && selected.value === 'staff';
-      staffFields.hidden = !isStaff;
       if (googleLogin) googleLogin.hidden = !!isStaff;
     }
 
     accountInputs.forEach(function(input){
-      input.addEventListener('change', syncStaffFields);
+      input.addEventListener('change', syncAccountType);
     });
-    syncStaffFields();
+    syncAccountType();
   })();
 </script>
 {% endblock %}

@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="panel narrow">
+  {% include "adoption/partials/back_link.html" with back_url=object.get_absolute_url back_label="Back to Application" %}
   <h1>Delete application?</h1>
-  <form method="post">{% csrf_token %}<button class="danger">Delete</button> <a class="button" href="{{ object.get_absolute_url }}">Cancel</a></form>
+  <form class="form-actions" method="post">{% csrf_token %}<a class="button" href="{{ object.get_absolute_url }}">Cancel</a><button class="danger">Delete</button></form>
 </section>
 {% endblock %}

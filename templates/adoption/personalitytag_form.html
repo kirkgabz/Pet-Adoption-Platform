@@ -1,4 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="panel narrow"><h1>Tag</h1><form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary">Save</button></form></section>
+<section class="panel narrow form-panel">
+  {% url 'tag-list' as tag_back_url %}
+  {% include "adoption/partials/back_link.html" with back_url=tag_back_url back_label="Back to Tags" %}
+  <div class="form-heading">
+    <p class="eyebrow">Personality Tags</p>
+    <h1>Tag</h1>
+  </div>
+  <form class="object-form" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="form-actions">
+      <a class="button" href="{% url 'tag-list' %}">Cancel</a>
+      <button class="primary">Save</button>
+    </div>
+  </form>
+</section>
 {% endblock %}

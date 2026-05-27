@@ -1,36 +1,100 @@
 {% extends "base.html" %}
 {% block title %}Shelters{% endblock %}
 {% block content %}
-<div class="page-head">
-  <h1>{% if user.is_staff and not user.is_superuser %}Your Shelter{% else %}Shelters{% endif %}</h1>
-  {% if user.is_superuser %}<a class="button primary" href="{% url 'shelter-create' %}">Add Shelter</a>{% endif %}
-  {% if user.is_staff and not user.is_superuser and not has_linked_shelter %}
-    <a class="button primary" href="{% url 'shelter-create' %}">Create Shelter Profile</a>
-  {% endif %}
-</div>
-<form class="filters" method="get"><input class="field" name="q" placeholder="Search shelter or city" value="{{ request.GET.q }}"><button>Search</button></form>
-<div class="list">
-  {% for shelter in object_list %}
-    <article class="row-card">
-      <div><h2><a href="{{ shelter.get_absolute_url }}">{{ shelter.name }}</a></h2><p>{{ shelter.address }}, {{ shelter.city }}</p></div>
-      <span>{{ shelter.email }}</span>
-    </article>
-  {% empty %}
-    {% if user.is_staff and not user.is_superuser and not has_linked_shelter %}
-      <section class="empty-state">
-        <p class="empty-icon">🐾</p>
-        <h2>Create your shelter profile</h2>
-        <p>Complete your shelter profile before posting pets.</p>
+<section class="shelter-directory-page">
+  <header class="shelter-directory-hero">
+    <div>
+      <p class="eyebrow">{% if user.is_staff and not user.is_superuser %}Shelter Workspace{% else %}Shelter Directory{% endif %}</p>
+      <h1>{% if user.is_staff and not user.is_superuser %}Your Shelter{% else %}Shelters{% endif %}</h1>
+      <p class="dash-subtitle">
+        {% if user.is_staff and not user.is_superuser %}
+          Keep your shelter details easy for adopters to trust and contact.
+        {% else %}
+          Find partner shelters, review their available pets, and connect with the teams caring for them.
+        {% endif %}
+      </p>
+    </div>
+    <div class="shelter-directory-summary">
+      <strong>{{ paginator.count }}</strong>
+      <span>{% if paginator.count == 1 %}Shelter listed{% else %}Shelters listed{% endif %}</span>
+    </div>
+  </header>
+
+  <div class="shelter-toolbar">
+    <form class="shelter-search-form" method="get">
+      <input class="field" name="q" placeholder="Search shelter, city, or address" value="{{ request.GET.q }}">
+      <button class="primary">Search</button>
+      {% if request.GET.q %}<a class="button filter-clear" href="{% url 'shelter-list' %}">Clear</a>{% endif %}
+    </form>
+    <div class="shelter-toolbar-actions">
+      {% if user.is_superuser %}<a class="button primary" href="{% url 'shelter-create' %}">Add Shelter</a>{% endif %}
+      {% if user.is_staff and not user.is_superuser and not has_linked_shelter %}
         <a class="button primary" href="{% url 'shelter-create' %}">Create Shelter Profile</a>
-      </section>
-    {% else %}
-      <section class="empty-state">
-        <p class="empty-icon">⌂</p>
-        <h2>No shelters found</h2>
-        <p>Try adjusting your search or check back later.</p>
-      </section>
-    {% endif %}
-  {% endfor %}
-</div>
-{% include "adoption/partials/pagination.html" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="shelter-directory-grid">
+    {% for shelter in object_list %}
+      <article class="shelter-directory-card">
+        <div class="shelter-directory-media">
+          {% if shelter.photo %}
+            <img src="{{ shelter.photo.url }}" alt="{{ shelter.name }}">
+          {% else %}
+            <span>{{ shelter.name|first|upper }}</span>
+          {% endif %}
+        </div>
+        <div class="shelter-directory-body">
+          <div class="shelter-directory-title">
+            <div>
+              <p class="eyebrow">{{ shelter.city|default:"Shelter" }}</p>
+              <h2><a href="{{ shelter.get_absolute_url }}">{{ shelter.name }}</a></h2>
+            </div>
+            <span class="pet-count">{{ shelter.available_pet_total }} available</span>
+          </div>
+
+          <p class="shelter-directory-description">
+            {% if shelter.description %}{{ shelter.description|truncatewords:24 }}{% else %}This shelter has not added a description yet.{% endif %}
+          </p>
+
+          <div class="shelter-directory-details">
+            <div>
+              <span>Address</span>
+              <strong>{{ shelter.address }}, {{ shelter.city }}</strong>
+            </div>
+            <div>
+              <span>Email</span>
+              <strong>{{ shelter.email }}</strong>
+            </div>
+            <div>
+              <span>Phone</span>
+              <strong>{{ shelter.phone|default:"Not provided" }}</strong>
+            </div>
+          </div>
+
+          <div class="shelter-directory-footer">
+            <span>{{ shelter.pet_total }} total pet{% if shelter.pet_total != 1 %}s{% endif %} posted</span>
+            <a class="button primary" href="{{ shelter.get_absolute_url }}">View Profile</a>
+          </div>
+        </div>
+      </article>
+    {% empty %}
+      {% if user.is_staff and not user.is_superuser and not has_linked_shelter %}
+        <section class="empty-state shelter-directory-empty">
+          <p class="empty-icon">PA</p>
+          <h2>Create your shelter profile</h2>
+          <p>Complete your shelter profile before posting pets.</p>
+          <a class="button primary" href="{% url 'shelter-create' %}">Create Shelter Profile</a>
+        </section>
+      {% else %}
+        <section class="empty-state shelter-directory-empty">
+          <p class="empty-icon">SH</p>
+          <h2>No shelters found</h2>
+          <p>Try adjusting your search or check back later.</p>
+        </section>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% include "adoption/partials/pagination.html" %}
+</section>
 {% endblock %}
