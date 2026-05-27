@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AdoptionApplication, ConversationMessage, Pet, PersonalityTag, Shelter
+from .models import AdoptionApplication, ConversationMessage, FavoritePet, Pet, PersonalityTag, Shelter
 
 
 @admin.register(Shelter)
@@ -20,6 +20,12 @@ class PetAdmin(admin.ModelAdmin):
     list_filter = ("species", "status", "personality_tags")
     search_fields = ("name", "breed", "description")
     filter_horizontal = ("personality_tags",)
+
+
+@admin.register(FavoritePet)
+class FavoritePetAdmin(admin.ModelAdmin):
+    list_display = ("user", "pet", "created_at")
+    search_fields = ("user__username", "pet__name")
 
 
 class MessageInline(admin.TabularInline):

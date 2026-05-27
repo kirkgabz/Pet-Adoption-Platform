@@ -1,39 +1,103 @@
 {% extends "base.html" %}
 {% block title %}Applications{% endblock %}
 {% block content %}
-<div class="page-head">
-  <div>
-    <p class="eyebrow">{% if user.is_staff %}Shelter Review{% else %}Adoption Status{% endif %}</p>
-    <h1>{% if user.is_staff %}Adoption Applications{% else %}My Applications{% endif %}</h1>
-    <p class="muted">{% if user.is_staff %}Review adopter requests and keep applicants updated.{% else %}Track your adoption requests and continue conversations with shelters.{% endif %}</p>
+<section class="application-list-page">
+  <header class="application-list-hero">
+    <div>
+      <p class="eyebrow">{% if user.is_staff %}Shelter Review{% else %}Adoption Status{% endif %}</p>
+      <h1>{% if user.is_staff %}Adoption Applications{% else %}My Applications{% endif %}</h1>
+      <p>{% if user.is_staff %}Review adopter requests, move applications through each stage, and keep conversations in one place.{% else %}Track each adoption request, see shelter replies, and continue every conversation from one focused page.{% endif %}</p>
+    </div>
+    <a class="button primary" href="{% if user.is_staff %}{% url 'pet-list' %}{% else %}{% url 'available-pets' %}{% endif %}">
+      {% if user.is_staff %}Manage Pets{% else %}Browse Pets{% endif %}
+    </a>
+  </header>
+
+  <section class="application-summary-grid" aria-label="Application summary">
+    <div>
+      <strong>{{ application_summary.total }}</strong>
+      <span>Total</span>
+    </div>
+    <div>
+      <strong>{{ application_summary.active }}</strong>
+      <span>Active</span>
+    </div>
+    <div>
+      <strong>{{ application_summary.messages }}</strong>
+      <span>{% if user.is_staff %}Adopter Messages{% else %}Shelter Messages{% endif %}</span>
+    </div>
+    <div>
+      <strong>{{ application_summary.approved|add:application_summary.completed }}</strong>
+      <span>Approved / Completed</span>
+    </div>
+  </section>
+
+  <div class="application-list-toolbar">
+    <div>
+      <h2>Application Tracker</h2>
+      <p>{% if user.is_staff %}Open a request to update its status or reply to the adopter.{% else %}Open a request to see the full timeline and shelter conversation.{% endif %}</p>
+    </div>
+    <span>{{ object_list|length }} shown</span>
   </div>
-</div>
-<div class="list application-list">
-  {% for application in object_list %}
-    <article class="row-card application-row">
-      <div>
-        <h2><a href="{{ application.get_absolute_url }}">{{ application.pet.name }}</a></h2>
-        <p>
-          {% if user.is_staff %}
-            {{ application.applicant.get_full_name|default:application.applicant.username }} • {{ application.pet.shelter.name }}
+
+  <div class="application-card-list">
+    {% for application in object_list %}
+      <article class="application-card">
+        <a class="application-card-media" href="{{ application.get_absolute_url }}">
+          {% if application.pet.photo %}
+            <img src="{{ application.pet.photo.url }}" alt="{{ application.pet.name }}">
           {% else %}
-            {{ application.pet.shelter.name }} • {{ application.pet.get_species_display }}
+            <span>{{ application.pet.name|first|upper }}</span>
           {% endif %}
-        </p>
-      </div>
-      <div class="application-row-actions">
-        <span class="status">{{ application.get_status_display }}</span>
-        <a class="button" href="{{ application.get_absolute_url }}">{% if user.is_staff %}Review{% else %}View Status{% endif %}</a>
-      </div>
-    </article>
-  {% empty %}
-    <section class="empty-state">
-      <p class="empty-icon">🐾</p>
-      <h2>{% if user.is_staff %}No applications yet{% else %}No applications yet{% endif %}</h2>
-      <p>{% if user.is_staff %}Applications from adopters will appear here once they apply for your pets.{% else %}Browse available pets and apply when you find a good match.{% endif %}</p>
-      {% if not user.is_staff %}<a class="button primary" href="{% url 'available-pets' %}">Browse Pets</a>{% endif %}
-    </section>
-  {% endfor %}
-</div>
-{% include "adoption/partials/pagination.html" %}
+        </a>
+
+        <div class="application-card-body">
+          <div class="application-card-title">
+            <div>
+              <p class="eyebrow">{{ application.pet.get_species_display }}</p>
+              <h2><a href="{{ application.get_absolute_url }}">{{ application.pet.name }}</a></h2>
+            </div>
+            <span class="status">{{ application.get_status_display }}</span>
+          </div>
+
+          <div class="application-card-facts">
+            <div>
+              <span>{% if user.is_staff %}Applicant{% else %}Shelter{% endif %}</span>
+              <strong>{% if user.is_staff %}{{ application.applicant.get_full_name|default:application.applicant.username }}{% else %}{{ application.pet.shelter.name }}{% endif %}</strong>
+            </div>
+            <div>
+              <span>Location</span>
+              <strong>{{ application.pet.shelter.city|default:"Not listed" }}</strong>
+            </div>
+            <div>
+              <span>Submitted</span>
+              <strong>{{ application.created_at|date:"M j, Y" }}</strong>
+            </div>
+          </div>
+
+          <ol class="application-mini-tracker">
+            <li class="active">Submitted</li>
+            <li class="{% if application.status == 'reviewing' or application.status == 'approved' or application.status == 'declined' or application.status == 'completed' %}active{% endif %}">Review</li>
+            <li class="{% if application.status == 'approved' or application.status == 'declined' or application.status == 'completed' %}active{% endif %}{% if application.status == 'declined' %} declined{% endif %}">Decision</li>
+            <li class="{% if application.status == 'completed' %}active{% endif %}">Complete</li>
+          </ol>
+
+          <div class="application-card-footer">
+            <span>{{ application.messages.count }} message{% if application.messages.count != 1 %}s{% endif %}</span>
+            <a class="button primary" href="{{ application.get_absolute_url }}">{% if user.is_staff %}Review Application{% else %}View Tracker{% endif %}</a>
+          </div>
+        </div>
+      </article>
+    {% empty %}
+      <section class="empty-state application-empty-state">
+        <p class="empty-icon">0</p>
+        <h2>No applications yet</h2>
+        <p>{% if user.is_staff %}Applications from adopters will appear here once they apply for your pets.{% else %}Browse available pets and apply when you find a good match.{% endif %}</p>
+        {% if not user.is_staff %}<a class="button primary" href="{% url 'available-pets' %}">Browse Pets</a>{% endif %}
+      </section>
+    {% endfor %}
+  </div>
+
+  {% include "adoption/partials/pagination.html" %}
+</section>
 {% endblock %}

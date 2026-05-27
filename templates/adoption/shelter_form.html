@@ -1,12 +1,92 @@
 {% extends "base.html" %}
+{% load static %}
+{% block title %}{% if shelter_setup_mode %}Shelter Setup{% else %}Shelter Profile{% endif %}{% endblock %}
+{% block body_class %}{% if shelter_setup_mode %}auth-layout{% endif %}{% endblock %}
+{% block sidebar %}{% if not shelter_setup_mode %}{{ block.super }}{% endif %}{% endblock %}
+{% block top_user_card %}{% if not shelter_setup_mode %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
+{% if shelter_setup_mode %}
+<section class="auth-page onboarding-auth-page shelter-setup-auth-page">
+  <div class="auth-card-wrap onboarding-card-wrap shelter-setup-card-wrap">
+    <div class="auth-card onboarding-auth-card shelter-setup-auth-card">
+      <div class="auth-card-brand">
+        <img src="{% static 'img/pet-adoption-logo-transparent.png' %}" alt="Pet Adoption Logo">
+        <strong>Pet Adoption</strong>
+      </div>
+      <p class="eyebrow">Required Step</p>
+      <h2>Create shelter profile</h2>
+      <p class="auth-login-note">Create a new shelter profile or enter an existing shelter name to link it to your staff account. You can post pets after this is saved.</p>
+
+      <form class="auth-register-form onboarding-form shelter-setup-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="register-fields">
+          <label class="register-field register-field-full">
+            <span>{{ form.name.label }}</span>
+            {{ form.name }}
+            {{ form.name.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.email.label }}</span>
+            {{ form.email }}
+            {{ form.email.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.phone.label }}</span>
+            {{ form.phone }}
+            {{ form.phone.errors }}
+          </label>
+          <label class="register-field register-field-full">
+            <span>{{ form.address.label }}</span>
+            {{ form.address }}
+            {{ form.address.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.city.label }}</span>
+            {{ form.city }}
+            {{ form.city.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.photo.label }}</span>
+            {{ form.photo }}
+            {{ form.photo.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.latitude.label }}</span>
+            {{ form.latitude }}
+            {{ form.latitude.errors }}
+          </label>
+          <label class="register-field">
+            <span>{{ form.longitude.label }}</span>
+            {{ form.longitude }}
+            {{ form.longitude.errors }}
+          </label>
+          <label class="register-field register-field-full">
+            <span>{{ form.description.label }}</span>
+            {{ form.description }}
+            {{ form.description.errors }}
+          </label>
+        </div>
+        <button class="primary">Save and Continue</button>
+      </form>
+
+      <form class="onboarding-logout-form" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="onboarding-logout-button">Logout</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% else %}
 <section class="panel form-panel">
+  {% url 'shelter-list' as shelter_back_url %}
+  {% include "adoption/partials/back_link.html" with back_url=shelter_back_url back_label="Back to Shelters" %}
   <div class="form-heading">
     <p class="eyebrow">Shelter Profile</p>
-    <h1>{% if object %}Edit Shelter{% elif user.is_staff and not user.is_superuser %}Create Shelter Profile{% else %}Add Shelter{% endif %}</h1>
-    <p class="muted">Keep contact and location details clear so adopters know where to reach you.</p>
+    <h1>{% if object %}Edit Shelter{% else %}Add Shelter{% endif %}</h1>
+    <p class="muted">{% if object %}Keep contact, location, and photo details clear so adopters know where to reach you.{% else %}Enter an existing shelter name to link it to your staff account, or add a new shelter profile.{% endif %}</p>
   </div>
-  <form class="object-form" method="post">
+  <form class="object-form" method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
     <div class="form-actions">
@@ -15,4 +95,5 @@
     </div>
   </form>
 </section>
+{% endif %}
 {% endblock %}

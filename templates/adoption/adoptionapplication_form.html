@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="panel narrow form-panel">
+  {% url 'application-list' as application_back_url %}
+  {% include "adoption/partials/back_link.html" with back_url=application_back_url back_label="Back to Applications" %}
   <div class="form-heading">
     <p class="eyebrow">Application Status</p>
     <h1>Edit Application</h1>

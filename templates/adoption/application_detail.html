@@ -2,20 +2,37 @@
 {% block title %}Application{% endblock %}
 {% block content %}
 <section class="application-detail-page">
+  {% url 'application-list' as application_back_url %}
+  {% include "adoption/partials/back_link.html" with back_url=application_back_url back_label="Back to Applications" %}
   <div class="panel application-status-panel">
     <div class="split">
       <div>
-        <p class="eyebrow">{% if user.is_staff %}Shelter Application Review{% else %}Application Status{% endif %}</p>
+        <p class="eyebrow">{% if user.is_staff %}Shelter Application Review{% else %}Application Tracker{% endif %}</p>
         <h1>{{ application.pet.name }} Application</h1>
       </div>
       <span class="status">{{ application.get_status_display }}</span>
     </div>
     <ol class="status-tracker">
-      <li class="{% if application.status == 'submitted' %}active{% endif %}">Submitted</li>
-      <li class="{% if application.status == 'reviewing' %}active{% endif %}">Reviewing</li>
-      <li class="{% if application.status == 'approved' %}active{% endif %}">Approved</li>
-      <li class="{% if application.status == 'completed' %}active{% endif %}">Completed</li>
-      {% if application.status == 'declined' %}<li class="active declined">Declined</li>{% endif %}
+      <li class="active">
+        <strong>Submitted</strong>
+        <span>Application received</span>
+      </li>
+      <li class="{% if under_review_active %}active{% endif %}">
+        <strong>Under Review</strong>
+        <span>{% if under_review_active %}Shelter is reviewing{% else %}Waiting for review{% endif %}</span>
+      </li>
+      <li class="{% if shelter_has_contacted %}active{% endif %}">
+        <strong>Shelter Contacted You</strong>
+        <span>{% if shelter_has_contacted %}Message received{% else %}Waiting for shelter message{% endif %}</span>
+      </li>
+      <li class="{% if decision_active %}active{% endif %}{% if application.status == 'declined' %} declined{% endif %}">
+        <strong>Approved / Declined</strong>
+        <span>{{ decision_text }}</span>
+      </li>
+      <li class="{% if application.status == 'completed' %}active{% endif %}">
+        <strong>Completed</strong>
+        <span>{% if application.status == 'completed' %}Adoption finalized{% else %}Final step{% endif %}</span>
+      </li>
     </ol>
   </div>
 
@@ -48,7 +65,7 @@
         <form class="review-actions" method="post">
           {% csrf_token %}
           <button class="primary" name="status" value="approved">Approve</button>
-          <button class="button" name="status" value="reviewing">Mark Reviewing</button>
+          <button class="button" name="status" value="reviewing">Mark Under Review</button>
           <button class="danger" name="status" value="declined">Decline</button>
         </form>
         <form class="status-select-form" method="post">
@@ -62,7 +79,6 @@
       {% endif %}
 
       <div class="actions">
-        <a class="button" href="{% url 'application-list' %}">Back to Applications</a>
         <a class="button danger" href="{% url 'application-delete' application.pk %}">Delete</a>
       </div>
     </section>
@@ -77,12 +93,12 @@
       <div class="messages">
         {% for message in conversation %}
           <div class="message {% if message.sender == user %}mine{% endif %}">
-            <strong>{% if message.sender == user %}You{% else %}{{ message.sender.username }}{% endif %}</strong>
+            <strong>{% if message.sender == user %}You{% elif message.sender.is_staff %}Shelter Staff{% else %}{{ message.sender.username }}{% endif %}</strong>
             <p>{{ message.body|linebreaksbr }}</p>
             <small>{{ message.created_at|date:"M j, Y g:i A" }}</small>
           </div>
         {% empty %}
-          <div class="empty-message">No messages yet. Start the conversation with a helpful update.</div>
+          <div class="empty-message">{% if user.is_staff %}No messages yet. Start the conversation with a helpful update.{% else %}No messages yet. Shelter staff messages will appear here with your application updates.{% endif %}</div>
         {% endfor %}
       </div>
       <form class="message-composer" method="post">

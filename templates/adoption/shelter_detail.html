@@ -2,6 +2,8 @@
 {% block title %}{{ object.name }}{% endblock %}
 {% block content %}
 <section class="panel shelter-profile">
+  {% url 'shelter-list' as shelter_back_url %}
+  {% include "adoption/partials/back_link.html" with back_url=shelter_back_url back_label="Back to Shelters" %}
   <div class="split">
     <div>
       <p class="eyebrow">Shelter Profile</p>

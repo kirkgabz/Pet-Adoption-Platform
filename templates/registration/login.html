@@ -18,6 +18,10 @@
   <div class="auth-card-wrap cat-card">
     <img class="auth-mascot cat" src="{% static 'img/cat-login.svg' %}" alt="Cute cat">
     <div class="auth-card">
+      <a class="auth-back-button" href="{% url 'home' %}" onclick="if (document.referrer && new URL(document.referrer).origin === location.origin) { history.back(); return false; }">
+        <span aria-hidden="true">&larr;</span>
+        <span>Back</span>
+      </a>
       <h2>Login</h2>
       {% if not login_role %}
         <p class="auth-login-note">

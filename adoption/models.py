@@ -26,6 +26,27 @@ class Shelter(models.Model):
     def get_absolute_url(self):
         return reverse("shelter-detail", kwargs={"pk": self.pk})
 
+    @property
+    def profile_missing_fields(self):
+        missing_fields = []
+        checks = [
+            ("Shelter name", self.name),
+            ("Address", self.address),
+            ("City", self.city),
+            ("Email", self.email),
+            ("Phone", self.phone),
+            ("Description", self.description),
+            ("Photo/logo", self.photo),
+        ]
+        for label, value in checks:
+            if not value:
+                missing_fields.append(label)
+        return missing_fields
+
+    @property
+    def is_complete(self):
+        return not self.profile_missing_fields
+
     def distance_to(self, latitude, longitude):
         if self.latitude is None or self.longitude is None:
             return None
@@ -86,10 +107,40 @@ class Pet(models.Model):
         return reverse("pet-detail", kwargs={"pk": self.pk})
 
 
+class AdopterProfile(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="adopter_profile")
+    city = models.CharField(max_length=80, blank=True)
+    preferred_species = models.CharField(max_length=20, choices=Pet.Species.choices, blank=True)
+    home_type = models.CharField(max_length=80, blank=True)
+    experience = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_complete(self):
+        return all([self.city, self.preferred_species, self.home_type, self.experience])
+
+    def __str__(self):
+        return f"{self.user} adopter profile"
+
+
+class FavoritePet(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorite_pets")
+    pet = models.ForeignKey(Pet, on_delete=models.CASCADE, related_name="favorited_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = ("user", "pet")
+
+    def __str__(self):
+        return f"{self.user} saved {self.pet}"
+
+
 class AdoptionApplication(models.Model):
     class Status(models.TextChoices):
         SUBMITTED = "submitted", "Submitted"
-        REVIEWING = "reviewing", "Reviewing"
+        REVIEWING = "reviewing", "Under Review"
         APPROVED = "approved", "Approved"
         DECLINED = "declined", "Declined"
         COMPLETED = "completed", "Completed"

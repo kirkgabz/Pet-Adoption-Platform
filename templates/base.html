@@ -11,36 +11,51 @@
   <div class="app-shell">
     {% block sidebar %}
     <aside class="sidebar">
-      <a class="brand" href="{% url 'pet-list' %}">
+      <a class="brand" href="{% if user.is_authenticated %}{% url 'pet-list' %}{% else %}{% url 'home' %}{% endif %}">
         <img class="brand-logo" src="{% static 'img/pet-adoption-logo-transparent.png' %}" alt="Pet Adoption Logo">
         <span>Pet Adoption</span>
       </a>
       <nav class="side-nav">
         {% with active_url=request.resolver_match.url_name %}
-        <a href="{% url 'pet-list' %}" {% if active_url == "pet-list" %}class="active"{% endif %}>Dashboard</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'pet-list' %}" {% if active_url == "pet-list" %}class="active"{% endif %}>Dashboard</a>
+        {% else %}
+          <a href="{% url 'home' %}" {% if active_url == "home" %}class="active"{% endif %}>Home</a>
+        {% endif %}
         {% if user.is_staff %}
           <a href="{% url 'pet-create' %}" {% if active_url == "pet-create" %}class="active"{% endif %}>Post Pet</a>
         {% endif %}
-        {% if not user.is_staff %}
-          <a href="{% url 'available-pets' %}" {% if active_url == "available-pets" %}class="active"{% endif %}>Available Pets</a>
+        {% if user.is_authenticated and not user.is_staff %}
+          <a href="{% url 'available-pets' %}" {% if active_url == "available-pets" or active_url == "pet-detail" %}class="active"{% endif %}>Browse Pets</a>
         {% endif %}
         <a href="{% url 'shelter-list' %}" {% if active_url == "shelter-list" or active_url == "shelter-detail" or active_url == "shelter-create" or active_url == "shelter-update" or active_url == "shelter-delete" %}class="active"{% endif %}>Shelters</a>
-        {% if not user.is_staff %}
-          <a href="{% url 'nearby-shelters' %}" {% if active_url == "nearby-shelters" %}class="active"{% endif %}>Nearby Shelters</a>
+        {% if user.is_authenticated %}
+          <a href="{% url 'application-list' %}" {% if active_url == "application-list" or active_url == "application-detail" or active_url == "application-update" or active_url == "application-delete" or active_url == "application-create" %}class="active"{% endif %}>Applications</a>
         {% endif %}
-        <a href="{% url 'application-list' %}" {% if active_url == "application-list" or active_url == "application-detail" or active_url == "application-update" or active_url == "application-delete" or active_url == "application-create" %}class="active"{% endif %}>Applications</a>
         {% if user.is_superuser %}
           <a href="{% url 'user-list' %}" {% if active_url == "user-list" or active_url == "user-update" or active_url == "user-delete" %}class="active"{% endif %}>Users</a>
         {% endif %}
         {% endwith %}
       </nav>
-      <div class="sidebar-card">
-        <div class="avatar">{{ user.username|default:"G"|first|upper }}</div>
-        <div>
-          <strong>{% if user.is_authenticated %}{{ user.username }}{% else %}Guest User{% endif %}</strong>
-          <small>{% if user.is_staff %}Shelter Staff{% elif user.is_authenticated %}Adopter{% else %}Visitor{% endif %}</small>
-        </div>
-      </div>
+      {% if user.is_authenticated %}
+        {% if user.is_staff %}
+          <div class="sidebar-card">
+            <div class="avatar">{{ user.username|first|upper }}</div>
+            <div>
+              <strong>{{ user.username }}</strong>
+              <small>Shelter Staff</small>
+            </div>
+          </div>
+        {% else %}
+          <a class="sidebar-card sidebar-card-link" href="{% url 'adopter-profile' %}" aria-label="Open your profile">
+            <div class="avatar">{{ user.username|first|upper }}</div>
+            <div>
+              <strong>{{ user.username }}</strong>
+              <small>Adopter</small>
+            </div>
+          </a>
+        {% endif %}
+      {% endif %}
       <div class="sidebar-actions">
         {% if user.is_authenticated %}
           <form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Logout</button></form>
@@ -58,23 +73,30 @@
 
       {% block top_user_card %}
       <!-- Top user card: visible when sidebar is hidden (auth/landing) or on small screens -->
-      <div class="top-user-card">
-        <div class="sidebar-card">
-          <div class="avatar">{{ user.username|default:"G"|first|upper }}</div>
-          <div>
-            <strong>{% if user.is_authenticated %}{{ user.username }}{% else %}Guest User{% endif %}</strong>
-            <small>{% if user.is_staff %}Shelter Staff{% elif user.is_authenticated %}Adopter{% else %}Visitor{% endif %}</small>
+      {% if user.is_authenticated %}
+        <div class="top-user-card">
+          {% if user.is_staff %}
+            <div class="sidebar-card">
+              <div class="avatar">{{ user.username|first|upper }}</div>
+              <div>
+                <strong>{{ user.username }}</strong>
+                <small>Shelter Staff</small>
+              </div>
+            </div>
+          {% else %}
+            <a class="sidebar-card sidebar-card-link" href="{% url 'adopter-profile' %}" aria-label="Open your profile">
+              <div class="avatar">{{ user.username|first|upper }}</div>
+              <div>
+                <strong>{{ user.username }}</strong>
+                <small>Adopter</small>
+              </div>
+            </a>
+          {% endif %}
+          <div class="sidebar-actions">
+            <form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Logout</button></form>
           </div>
         </div>
-        <div class="sidebar-actions">
-          {% if user.is_authenticated %}
-            <form class="inline" method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Logout</button></form>
-          {% else %}
-            <a class="button primary" href="{% url 'login' %}">Login</a>
-            <a class="button" href="{% url 'register' %}">Register</a>
-          {% endif %}
-        </div>
-      </div>
+      {% endif %}
       {% endblock %}
       {% block content %}{% endblock %}
     </main>

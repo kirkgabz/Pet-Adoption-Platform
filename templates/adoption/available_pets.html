@@ -1,35 +1,34 @@
 {% extends "base.html" %}
-{% block title %}Available Pets{% endblock %}
+{% block title %}Browse Pets{% endblock %}
 {% block content %}
 <section class="dashboard available-pets-page">
   <div class="dashboard-main">
     <header class="dash-header">
       <div>
-        <p class="eyebrow">Available for Adoption</p>
+        <p class="eyebrow">Browse Pets</p>
         <h1>Pets Looking for Homes</h1>
         <p class="dash-subtitle">Use filters to quickly find pets near your city or barangay, then open a card to apply.</p>
       </div>
-      <form class="dash-search" method="get">
-        <input name="q" placeholder="Search pets, breeds, notes" value="{{ request.GET.q }}">
-        {% if request.GET.species %}<input type="hidden" name="species" value="{{ request.GET.species }}">{% endif %}
-        {% if request.GET.location %}<input type="hidden" name="location" value="{{ request.GET.location }}">{% endif %}
-        {% if request.GET.tag %}<input type="hidden" name="tag" value="{{ request.GET.tag }}">{% endif %}
-        <button>Search</button>
-      </form>
     </header>
 
-    <form class="filters dashboard-filters pet-filter-bar" method="get">
-      {% if request.GET.q %}<input type="hidden" name="q" value="{{ request.GET.q }}">{% endif %}
+    <form class="filters dashboard-filters pet-filter-bar" method="get" aria-label="Browse pets filters" data-pet-filter-form>
+      <input type="hidden" name="lat" value="{{ request.GET.lat }}" data-lat-field {% if not near_me_active %}disabled{% endif %}>
+      <input type="hidden" name="lng" value="{{ request.GET.lng }}" data-lng-field {% if not near_me_active %}disabled{% endif %}>
+      <input type="hidden" name="radius" value="{{ request.GET.radius|default:near_me_radius }}" data-radius-field {% if not near_me_active %}disabled{% endif %}>
       <label class="filter-control">
-        <span>Show me the pawfect...</span>
+        <span>Species</span>
         <select class="field" name="species">
           <option value="">All species</option>
           {% for value,label in species_choices %}<option value="{{ value }}" {% if request.GET.species == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
       </label>
       <label class="filter-control location-filter">
-        <span>Located near...</span>
-        <input class="field" name="location" placeholder="City, barangay, shelter, or address" value="{{ request.GET.location }}">
+        <span>Location</span>
+        <div class="location-field-group">
+          <input class="field" name="location" placeholder="City, barangay, or shelter" value="{{ request.GET.location }}">
+          <button class="button location-near-me" type="button" data-near-me>Near me</button>
+        </div>
+        <small class="filter-help" data-location-status>{% if near_me_active %}Showing pets within {{ near_me_radius|floatformat:0 }} km of you.{% else %}Use your current location or type an area.{% endif %}</small>
       </label>
       <label class="filter-control">
         <span>Personality</span>
@@ -38,15 +37,34 @@
           {% for tag in tags %}<option value="{{ tag.id }}" {% if request.GET.tag == tag.id|stringformat:"s" %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
         </select>
       </label>
-      <button class="primary">Filter</button>
+      <label class="filter-control">
+        <span>Shelter</span>
+        <select class="field" name="shelter">
+          <option value="">All shelters</option>
+          {% for shelter in shelters %}<option value="{{ shelter.id }}" {% if request.GET.shelter == shelter.id|stringformat:"s" %}selected{% endif %}>{{ shelter.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="filter-control">
+        <span>Age</span>
+        <select class="field" name="age">
+          <option value="">Any age</option>
+          {% for value,label in age_choices %}<option value="{{ value }}" {% if request.GET.age == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="filter-actions">
+        <button class="primary">Apply Filters</button>
+        {% if request.GET.species or request.GET.location or request.GET.tag or request.GET.shelter or request.GET.age or request.GET.lat or request.GET.lng %}
+          <a class="button filter-clear" href="{% url 'available-pets' %}">Clear</a>
+        {% endif %}
+      </div>
     </form>
 
     <div class="dashboard-panels">
       <section class="panel-card">
         <div class="panel-title">
           <div>
-            <h2>Available Pets</h2>
-            <p class="muted">Tap a card for photos, shelter info, and application details.</p>
+            <h2>Browse Pets</h2>
+            <p class="muted">{% if user.is_authenticated %}Tap a card for photos, shelter info, and application details.{% else %}Browse freely. You only need to log in when you are ready to apply.{% endif %}</p>
           </div>
           <span class="pet-count">{{ paginator.count }} pets</span>
         </div>
@@ -57,13 +75,18 @@
                 {% if pet.photo %}<img src="{{ pet.photo.url }}" alt="{{ pet.name }}" class="pet-photo">{% else %}<div class="pet-photo-placeholder">🐾</div>{% endif %}
               </div>
               <div class="pet-card-content">
-                <h3>{{ pet.name }}</h3>
+                <div class="pet-card-title">
+                  <h3>{{ pet.name }}</h3>
+                  <span class="status pet-status">{{ pet.get_status_display }}</span>
+                </div>
                 <div class="pet-specs">
                   <span class="spec-item">{{ pet.get_species_display }}</span>
                   {% if pet.breed %}<span class="spec-item">{{ pet.breed }}</span>{% endif %}
                   <span class="spec-item">{{ pet.age }} yrs</span>
                 </div>
+                <p class="pet-shelter">{{ pet.shelter.name }}</p>
                 <p class="pet-location">📍 {{ pet.shelter.city|default:pet.shelter.name }}</p>
+                {% if near_me_active %}<p class="pet-location">{{ pet.distance_km|floatformat:1 }} km away</p>{% endif %}
                 {% if pet.personality_tags.all %}
                   <div class="pet-tags">
                     {% for tag in pet.personality_tags.all|slice:":2" %}
@@ -103,16 +126,28 @@
                   <p><strong>Shelter:</strong> {{ pet.shelter.name }}</p>
                   <p><strong>Located near:</strong> {{ pet.shelter.city|default:pet.shelter.address }}</p>
                   <div class="pet-preview-actions">
-                    {% if user.is_authenticated and not user.is_staff and pet.posted_by != user and pet.status == 'available' %}
+                    {% if not user.is_authenticated and pet.status == 'available' %}
+                      <a class="button primary" href="{% url 'login' %}?role=user&next={% url 'application-create' pet.pk %}">Apply to Adopt</a>
+                    {% elif user.is_authenticated and not user.is_staff and pet.posted_by != user and pet.status == 'available' %}
                       <a class="button primary application-preview-trigger" href="{% url 'application-create' pet.pk %}" data-preview-target="application-preview-{{ pet.pk }}">Apply to Adopt</a>
                     {% elif pet.posted_by == user %}
                       <span class="muted">You cannot apply to your own pet listing.</span>
                     {% endif %}
+                    {% if user.is_authenticated and not user.is_staff %}
+                      <form class="inline-action-form" method="post" action="{% url 'pet-favorite' pet.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        {% if pet.id in favorite_pet_ids %}<input type="hidden" name="action" value="remove">{% endif %}
+                        <button class="button" type="submit">{% if pet.id in favorite_pet_ids %}Remove Saved Pet{% else %}Save Pet{% endif %}</button>
+                      </form>
+                    {% endif %}
+                    <a class="button" href="mailto:{{ pet.shelter.email }}">Contact Shelter</a>
+                    <a class="button" href="{{ pet.shelter.get_absolute_url }}">View Shelter</a>
                   </div>
                 </div>
               </article>
             </template>
-            {% if not user.is_staff %}
+            {% if user.is_authenticated and not user.is_staff %}
             <template id="application-preview-{{ pet.pk }}">
               <article class="application-preview-detail">
                 <div class="application-preview-head">
@@ -185,6 +220,18 @@
       <h2>Take your time choosing.</h2>
       <p>Look at each pet's personality tags and profile to find a great match for your home.</p>
     </section>
+
+    {% if not user.is_authenticated %}
+      <section class="tip-card">
+        <p class="eyebrow">Ready to Apply?</p>
+        <h2>Create your adopter account.</h2>
+        <p>When you find the right pet, log in or register to submit your application and track its status.</p>
+        <div class="actions">
+          <a class="button primary" href="{% url 'register' %}">Register</a>
+          <a class="button" href="{% url 'login' %}?role=user">Login</a>
+        </div>
+      </section>
+    {% endif %}
   </aside>
 </section>
 <div class="pet-preview-overlay" id="petPreviewOverlay" hidden>
@@ -197,6 +244,70 @@
 
 {% block extra_js %}
 <script>
+  (function(){
+    const filterForm = document.querySelector('[data-pet-filter-form]');
+    if (!filterForm) return;
+
+    const nearMeButton = filterForm.querySelector('[data-near-me]');
+    const locationInput = filterForm.querySelector('input[name="location"]');
+    const latitudeInput = filterForm.querySelector('[data-lat-field]');
+    const longitudeInput = filterForm.querySelector('[data-lng-field]');
+    const radiusInput = filterForm.querySelector('[data-radius-field]');
+    const locationStatus = filterForm.querySelector('[data-location-status]');
+
+    function enableCoordinateFields(){
+      latitudeInput.disabled = false;
+      longitudeInput.disabled = false;
+      radiusInput.disabled = false;
+    }
+
+    function clearCoordinateFields(){
+      latitudeInput.value = '';
+      longitudeInput.value = '';
+      latitudeInput.disabled = true;
+      longitudeInput.disabled = true;
+      radiusInput.disabled = true;
+    }
+
+    if (locationInput) {
+      locationInput.addEventListener('input', function(){
+        clearCoordinateFields();
+        if (locationStatus) locationStatus.textContent = 'Use your current location or type an area.';
+      });
+    }
+
+    if (nearMeButton) {
+      nearMeButton.addEventListener('click', function(){
+        if (!navigator.geolocation) {
+          if (locationStatus) locationStatus.textContent = 'Your browser does not support current-location filtering.';
+          return;
+        }
+
+        nearMeButton.disabled = true;
+        nearMeButton.textContent = 'Finding...';
+        if (locationStatus) locationStatus.textContent = 'Asking your browser for your current location.';
+
+        navigator.geolocation.getCurrentPosition(
+          function(position){
+            enableCoordinateFields();
+            latitudeInput.value = position.coords.latitude.toFixed(6);
+            longitudeInput.value = position.coords.longitude.toFixed(6);
+            if (!radiusInput.value) radiusInput.value = '{{ near_me_radius|floatformat:0 }}';
+            if (locationInput) locationInput.value = '';
+            if (locationStatus) locationStatus.textContent = 'Filtering pets near your current location.';
+            filterForm.submit();
+          },
+          function(error){
+            nearMeButton.disabled = false;
+            nearMeButton.textContent = 'Near me';
+            if (locationStatus) locationStatus.textContent = 'Location permission was not completed. You can still type a city or barangay.';
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+        );
+      });
+    }
+  })();
+
   (function(){
     const overlay = document.getElementById('petPreviewOverlay');
     if (!overlay) return;

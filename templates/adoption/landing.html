@@ -27,8 +27,7 @@
         Browse adoptable pets, send applications, message shelters, and track every adoption step in one friendly place.
       </p>
       <div class="landing-actions">
-        <a class="button primary landing-primary" href="{% url 'available-pets' %}">Browse Pets</a>
-        <a class="button landing-secondary" href="{% url 'register' %}">Create Account</a>
+        <a class="button primary landing-primary" href="#browse-pets" data-open-browse-tab>Browse Pets</a>
       </div>
       <div class="landing-hero-cards" aria-label="Platform highlights">
         <div>
@@ -46,5 +45,89 @@
       </div>
     </div>
   </div>
+
+  <div class="landing-browse-overlay" data-browse-tab hidden>
+    <section class="landing-browse-tab" role="dialog" aria-modal="true" aria-labelledby="landingBrowseTitle">
+      <div class="landing-browse-head">
+        <div>
+          <p class="eyebrow">Browse Pets</p>
+          <h2 id="landingBrowseTitle">Pets ready for a loving home</h2>
+        </div>
+        <button type="button" class="landing-browse-close" data-close-browse-tab aria-label="Close browse pets tab">&times;</button>
+      </div>
+
+      <div class="landing-browse-grid">
+        {% for pet in landing_pets %}
+          <article class="landing-pet-card">
+            <div class="landing-pet-photo">
+              {% if pet.photo %}
+                <img src="{{ pet.photo.url }}" alt="{{ pet.name }}">
+              {% else %}
+                <span>{{ pet.name|first|upper }}</span>
+              {% endif %}
+            </div>
+            <div>
+              <h3>{{ pet.name }}</h3>
+              <p>{{ pet.get_species_display }}{% if pet.breed %} / {{ pet.breed }}{% endif %} / {{ pet.shelter.city|default:pet.shelter.name }}</p>
+              <div class="tags">
+                {% for tag in pet.personality_tags.all|slice:":2" %}
+                  <span>{{ tag.name }}</span>
+                {% empty %}
+                  <span>Ready for a family</span>
+                {% endfor %}
+              </div>
+            </div>
+          </article>
+        {% empty %}
+          <div class="empty-state">
+            <h2>No pets available yet</h2>
+            <p>Please check back soon for new adoptable pets.</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="landing-browse-actions">
+        <a class="button primary" href="{% url 'login' %}?role=user">Login to Browse All Pets</a>
+      </div>
+    </section>
+  </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function(){
+    const openButton = document.querySelector('[data-open-browse-tab]');
+    const overlay = document.querySelector('[data-browse-tab]');
+    if (!openButton || !overlay) return;
+
+    const closeButton = overlay.querySelector('[data-close-browse-tab]');
+
+    function openTab(event){
+      if (event) event.preventDefault();
+      overlay.hidden = false;
+      document.body.classList.add('landing-browse-open');
+      requestAnimationFrame(function(){
+        overlay.classList.add('show');
+        if (closeButton) closeButton.focus();
+      });
+    }
+    function closeTab(){
+      overlay.classList.remove('show');
+      overlay.hidden = true;
+      document.body.classList.remove('landing-browse-open');
+      openButton.focus();
+    }
+
+    openButton.addEventListener('click', openTab);
+    if (window.location.hash === '#browse-pets') openTab();
+    if (closeButton) closeButton.addEventListener('click', closeTab);
+    overlay.addEventListener('click', function(event){
+      if (event.target === overlay) closeTab();
+    });
+    document.addEventListener('keydown', function(event){
+      if (event.key === 'Escape' && !overlay.hidden) closeTab();
+    });
+  })();
+</script>
 {% endblock %}
