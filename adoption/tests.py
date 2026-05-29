@@ -1,8 +1,9 @@
 import re
+from types import SimpleNamespace
 from urllib.parse import urlencode
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import AdopterProfile, AdoptionApplication, ConversationMessage, FavoritePet, Pet, PersonalityTag, Shelter
@@ -36,6 +37,27 @@ class ShelterStaffWorkflowTests(TestCase):
         response = self.client.get(reverse("pet-create"))
 
         self.assertRedirects(response, reverse("shelter-create"))
+
+    def test_staff_without_shelter_cannot_post_pet_after_skipping_setup(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("pet-create"),
+            {
+                "name": "Skipped Setup Pup",
+                "species": Pet.Species.DOG,
+                "breed": "Mixed",
+                "age": 2,
+                "description": "Should not be posted yet.",
+            },
+            follow=True,
+        )
+
+        self.assertFalse(Pet.objects.filter(name="Skipped Setup Pup").exists())
+        self.assertContains(response, "landing-auth-overlay show landing-auth-required")
+        self.assertContains(response, 'data-auth-start-view="shelter"')
+        self.assertContains(response, "Create shelter profile")
+        self.assertContains(response, "Skip for now")
 
     def test_staff_without_shelter_is_redirected_from_dashboard_to_setup(self):
         self.client.force_login(self.staff)
@@ -111,14 +133,18 @@ class ShelterStaffWorkflowTests(TestCase):
         self.assertFalse(Shelter.objects.filter(email=user.email).exists())
         self.assertRedirects(response, reverse("shelter-create"))
 
-    def test_shelter_setup_form_includes_photo_logo_upload(self):
+    def test_shelter_setup_form_uses_landing_required_step_tab(self):
         self.client.force_login(self.staff)
 
         response = self.client.get(reverse("shelter-create"))
 
-        self.assertContains(response, '<body class="auth-layout">')
+        self.assertContains(response, '<body class="landing-layout">')
+        self.assertContains(response, "landing-auth-overlay show")
+        self.assertContains(response, 'data-auth-start-view="shelter"')
         self.assertContains(response, "Required Step")
         self.assertContains(response, "Create shelter profile")
+        self.assertContains(response, "Skip for now")
+        self.assertNotContains(response, 'action="/accounts/logout/"')
         self.assertContains(response, 'enctype="multipart/form-data"')
         self.assertContains(response, "Photo/logo")
         self.assertContains(response, 'name="photo"')
@@ -271,18 +297,40 @@ class FrontendRenderTests(TestCase):
                 response = self.client.get(reverse(url_name))
                 self.assertEqual(response.status_code, 200)
 
+    def test_adopter_sidebar_does_not_show_care_tips(self):
+        self.client.force_login(self.adopter)
+
+        response = self.client.get(reverse("pet-list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, f'href="{reverse("care-tips")}"')
+        self.assertNotContains(response, "Care Tips")
+
     def test_landing_browse_tab_is_closable_and_has_no_guest_card(self):
         response = self.client.get(reverse("home"))
 
+        self.assertContains(response, "Features")
+        self.assertContains(response, "How It Works")
+        self.assertContains(response, "Adopt with clarity")
         self.assertContains(response, "data-open-browse-tab")
         self.assertContains(response, "data-close-browse-tab")
+        self.assertContains(response, "data-open-auth-tab")
+        self.assertContains(response, "data-close-auth-tab")
+        self.assertContains(response, f'action="{reverse("home")}"')
+        self.assertContains(response, 'name="landing_auth_action" value="login"')
+        self.assertContains(response, 'name="landing_auth_action" value="register"')
+        self.assertContains(response, f'action="{reverse("google_login")}"')
+        self.assertContains(response, "Continue with Google Account")
+        self.assertContains(response, "data-google-login-role-input")
+        self.assertContains(response, "data-google-register-role-input")
         self.assertNotContains(response, f'href="{self.pet.get_absolute_url()}"')
         self.assertNotContains(response, "data-open-landing-pet")
         self.assertNotContains(response, "data-pet-panel")
         self.assertNotContains(response, "landing-pet-card-action")
         self.assertNotContains(response, "View details")
         self.assertNotContains(response, "Open Full Browse Page")
-        self.assertNotContains(response, "Create Account")
+        self.assertContains(response, "Create a profile to save applications and message shelters.")
+        self.assertContains(response, "Create Account")
         self.assertContains(response, "Login to Browse All Pets")
         self.assertNotContains(response, "Login to Apply")
         content = response.content.decode()
@@ -291,6 +339,175 @@ class FrontendRenderTests(TestCase):
             self.assertNotIn(reverse("register"), action_block)
         self.assertNotContains(response, "Guest User")
         self.assertNotContains(response, "Visitor")
+
+    @override_settings(SOCIALACCOUNT_PROVIDERS={"google": {}})
+    def test_google_login_start_stores_selected_role(self):
+        response = self.client.get(f'{reverse("google_login")}?role=staff')
+
+        self.assertRedirects(response, reverse("login"))
+        self.assertEqual(self.client.session["google_account_role"], "staff")
+
+    def test_google_social_adapter_applies_selected_staff_role(self):
+        from .adapters import PetAdoptionSocialAccountAdapter
+
+        user = User.objects.create_user(username="googlestaff", email="googlestaff@example.com")
+        request = SimpleNamespace(session={"google_account_role": "staff"})
+
+        PetAdoptionSocialAccountAdapter().apply_google_role(request, user)
+
+        user.refresh_from_db()
+        self.assertTrue(user.is_staff)
+        self.assertFalse(AdopterProfile.objects.filter(user=user).exists())
+
+    def test_google_social_adapter_defaults_to_adopter_profile(self):
+        from .adapters import PetAdoptionSocialAccountAdapter
+
+        user = User.objects.create_user(username="googleadopter", email="googleadopter@example.com")
+        request = SimpleNamespace(session={"google_account_role": "user"})
+
+        PetAdoptionSocialAccountAdapter().apply_google_role(request, user)
+
+        user.refresh_from_db()
+        self.assertFalse(user.is_staff)
+        self.assertTrue(AdopterProfile.objects.filter(user=user).exists())
+
+    def test_landing_login_errors_stay_in_auth_tab(self):
+        response = self.client.post(
+            reverse("home"),
+            {
+                "landing_auth_action": "login",
+                "login_role": "staff",
+                "username": "wrong",
+                "password": "bad-password",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pet Adoption Platform")
+        self.assertContains(response, 'data-auth-start-view="login"')
+        self.assertContains(response, 'data-auth-start-role="staff"')
+        self.assertContains(response, "Please enter a correct username and password")
+        self.assertContains(response, "landing-auth-overlay show")
+
+    def test_landing_register_errors_stay_in_auth_tab(self):
+        response = self.client.post(
+            reverse("home"),
+            {
+                "landing_auth_action": "register",
+                "account_type": "adopter",
+                "username": "new-user",
+                "email": "new@example.com",
+                "first_name": "New",
+                "last_name": "User",
+                "password1": "password123",
+                "password2": "different123",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pet Adoption Platform")
+        self.assertContains(response, 'data-auth-start-view="register"')
+        self.assertContains(response, "The two password fields")
+        self.assertContains(response, "landing-auth-overlay show")
+
+    def test_landing_adopter_signup_opens_required_profile_tab(self):
+        response = self.client.post(
+            reverse("home"),
+            {
+                "landing_auth_action": "register",
+                "account_type": "adopter",
+                "username": "landingadopter",
+                "email": "landingadopter@example.com",
+                "first_name": "Landing",
+                "last_name": "Adopter",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+        )
+
+        user = User.objects.get(username="landingadopter")
+        self.assertFalse(user.is_staff)
+        self.assertTrue(AdopterProfile.objects.filter(user=user).exists())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "landing-auth-overlay show landing-auth-required")
+        self.assertContains(response, 'data-auth-start-view="adopter"')
+        self.assertContains(response, "Complete your adopter profile")
+
+    def test_landing_staff_signup_opens_required_shelter_tab(self):
+        response = self.client.post(
+            reverse("home"),
+            {
+                "landing_auth_action": "register",
+                "account_type": "staff",
+                "username": "landingstaff",
+                "email": "landingstaff@example.com",
+                "first_name": "Landing",
+                "last_name": "Staff",
+                "password1": "StrongPass123!",
+                "password2": "StrongPass123!",
+            },
+        )
+
+        user = User.objects.get(username="landingstaff")
+        self.assertTrue(user.is_staff)
+        self.assertFalse(Shelter.objects.filter(email=user.email).exists())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "landing-auth-overlay show landing-auth-required")
+        self.assertContains(response, 'data-auth-start-view="shelter"')
+        self.assertContains(response, "Create shelter profile")
+
+    def test_landing_incomplete_adopter_login_opens_required_profile_tab(self):
+        user = User.objects.create_user(
+            username="landingfresh",
+            email="landingfresh@example.com",
+            password="StrongPass123!",
+        )
+
+        response = self.client.post(
+            reverse("home"),
+            {
+                "landing_auth_action": "login",
+                "login_role": "user",
+                "username": user.username,
+                "password": "StrongPass123!",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "landing-auth-overlay show landing-auth-required")
+        self.assertContains(response, 'data-auth-start-view="adopter"')
+        self.assertContains(response, "Complete your adopter profile")
+
+    def test_incomplete_logged_in_accounts_do_not_auto_open_required_tab_on_home(self):
+        incomplete_adopter = User.objects.create_user(
+            username="homeadopter",
+            email="homeadopter@example.com",
+            password="password",
+        )
+        self.client.force_login(incomplete_adopter)
+
+        adopter_response = self.client.get(reverse("home"))
+
+        self.assertEqual(adopter_response.status_code, 200)
+        self.assertContains(adopter_response, "Pet Adoption Platform")
+        self.assertNotContains(adopter_response, "landing-auth-overlay show")
+        self.assertNotContains(adopter_response, 'data-auth-start-view="adopter"')
+
+        self.client.logout()
+        staff_without_shelter = User.objects.create_user(
+            username="homestaff",
+            email="homestaff@example.com",
+            password="password",
+            is_staff=True,
+        )
+        self.client.force_login(staff_without_shelter)
+
+        staff_response = self.client.get(reverse("home"))
+
+        self.assertEqual(staff_response.status_code, 200)
+        self.assertContains(staff_response, "Pet Adoption Platform")
+        self.assertNotContains(staff_response, "landing-auth-overlay show")
+        self.assertNotContains(staff_response, 'data-auth-start-view="shelter"')
 
     def test_public_can_view_pet_details_before_login(self):
         detail_response = self.client.get(self.pet.get_absolute_url())
@@ -360,6 +577,9 @@ class FrontendRenderTests(TestCase):
         self.assertContains(response, "Any age")
         self.assertContains(response, "Near me")
         self.assertContains(response, "Use your current location or type an area.")
+        self.assertContains(response, 'data-location-api-ready="true"')
+        self.assertContains(response, "petAdoptionLocationProvider")
+        self.assertContains(response, 'name="location_source"')
         self.assertContains(response, "Apply Filters")
         self.assertContains(response, "Clear")
         self.assertNotContains(response, "Search pets, breeds, notes")
@@ -466,6 +686,60 @@ class FrontendRenderTests(TestCase):
         self.assertNotContains(response, "Far Match")
         self.assertContains(response, "Showing pets within 5 km of you.")
         self.assertContains(response, "km away")
+
+    def test_available_pets_near_me_accepts_api_coordinate_names(self):
+        near_shelter = Shelter.objects.create(
+            name="API Near Shelter",
+            email="api-near@example.com",
+            phone="555-0500",
+            address="Near API Street",
+            city="Manila",
+            latitude="14.599500",
+            longitude="120.984200",
+        )
+        far_shelter = Shelter.objects.create(
+            name="API Far Shelter",
+            email="api-far@example.com",
+            phone="555-0600",
+            address="Far API Street",
+            city="Cebu",
+            latitude="10.315700",
+            longitude="123.885400",
+        )
+        Pet.objects.create(
+            name="API Nearby Match",
+            species=Pet.Species.DOG,
+            breed="Mixed",
+            age=2,
+            description="Close from an API-style coordinate payload.",
+            shelter=near_shelter,
+            posted_by=self.staff,
+        )
+        Pet.objects.create(
+            name="API Far Match",
+            species=Pet.Species.DOG,
+            breed="Mixed",
+            age=2,
+            description="Too far from the API-style coordinate payload.",
+            shelter=far_shelter,
+            posted_by=self.staff,
+        )
+
+        response = self.client.get(
+            reverse("available-pets"),
+            {
+                "latitude": "14.5995",
+                "longitude": "120.9842",
+                "location_source": "test-api",
+                "location_label": "Manila",
+            },
+        )
+
+        self.assertContains(response, "API Nearby Match")
+        self.assertNotContains(response, "API Far Match")
+        self.assertContains(response, "Showing pets within 25 km of Manila.")
+        self.assertContains(response, 'name="lat" value="14.5995"')
+        self.assertContains(response, 'name="lng" value="120.9842"')
 
     def test_adopter_sidebar_shows_browse_pets_link(self):
         self.client.force_login(self.adopter)
@@ -675,6 +949,31 @@ class FrontendRenderTests(TestCase):
         expected = f"{reverse('login')}?next={reverse('application-create', args=[self.pet.pk])}"
         self.assertRedirects(response, expected)
 
+    def test_incomplete_adopter_cannot_apply_after_skipping_profile(self):
+        user = User.objects.create_user(
+            username="skippedprofile",
+            email="skippedprofile@example.com",
+            password="password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse("application-create", args=[self.new_pet.pk]),
+            {
+                "home_type": "Apartment",
+                "has_yard": "off",
+                "experience": "Some experience.",
+                "reason": "I can care for this pet.",
+            },
+            follow=True,
+        )
+
+        self.assertFalse(AdoptionApplication.objects.filter(applicant=user, pet=self.new_pet).exists())
+        self.assertContains(response, "landing-auth-overlay show landing-auth-required")
+        self.assertContains(response, 'data-auth-start-view="adopter"')
+        self.assertContains(response, "Complete your adopter profile")
+        self.assertContains(response, "Skip for now")
+
     def test_adopter_signup_redirects_to_onboarding(self):
         response = self.client.post(
             reverse("register"),
@@ -726,7 +1025,7 @@ class FrontendRenderTests(TestCase):
         expected = f"{reverse('adopter-onboarding')}?{urlencode({'next': reverse('pet-list')})}"
         self.assertRedirects(response, expected)
 
-    def test_onboarding_page_uses_auth_layout_and_has_no_skip_button(self):
+    def test_onboarding_page_uses_landing_required_step_tab(self):
         user = User.objects.create_user(
             username="needsprofile",
             email="needsprofile@example.com",
@@ -736,9 +1035,13 @@ class FrontendRenderTests(TestCase):
 
         response = self.client.get(reverse("adopter-onboarding"))
 
-        self.assertContains(response, '<body class="auth-layout">')
+        self.assertContains(response, '<body class="landing-layout">')
+        self.assertContains(response, "landing-auth-overlay show")
+        self.assertContains(response, 'data-auth-start-view="adopter"')
         self.assertContains(response, "Required Step")
-        self.assertNotContains(response, "Skip for now")
+        self.assertContains(response, "Complete your adopter profile")
+        self.assertContains(response, "Skip for now")
+        self.assertNotContains(response, 'action="/accounts/logout/"')
         self.assertNotContains(response, 'class="side-nav"')
 
     def test_completed_adopter_onboarding_url_redirects_to_profile_editor(self):

@@ -6,45 +6,100 @@
 {% block top_user_card %}{% endblock %}
 {% block content %}
 <section class="landing-page">
-  <video class="landing-background-video" autoplay muted loop playsinline preload="auto" aria-hidden="true">
-    <source src="{% static 'video/landing-background.mp4' %}?v=20260526" type="video/mp4">
-  </video>
-  <div class="landing-video-scrim" aria-hidden="true"></div>
-  <div class="landing-card">
-    <div class="landing-brand">
-      <img class="landing-logo-img" src="{% static 'img/pet-adoption-logo-transparent.png' %}" alt="Pet Adoption Logo">
-      <strong>Pet Adoption</strong>
-    </div>
-    <div class="landing-top-actions">
-      <a class="button primary landing-primary" href="{% url 'login' %}">Login</a>
-      <a class="button landing-secondary" href="{% url 'register' %}">Register</a>
-    </div>
+  <section class="landing-hero-stage">
+    <video class="landing-background-video" autoplay muted loop playsinline preload="auto" aria-hidden="true">
+      <source src="{% static 'video/landing-background.mp4' %}?v=20260526" type="video/mp4">
+    </video>
+    <div class="landing-video-scrim" aria-hidden="true"></div>
+    <div class="landing-card">
+      <div class="landing-brand">
+        <img class="landing-logo-img" src="{% static 'img/pet-adoption-logo-transparent.png' %}" alt="Pet Adoption Logo">
+        <strong>Pet Adoption</strong>
+      </div>
+      <div class="landing-top-actions">
+        <a class="button primary landing-primary" href="{% url 'login' %}" data-open-auth-tab="login">Login</a>
+        <a class="button landing-secondary" href="{% url 'register' %}" data-open-auth-tab="register">Register</a>
+      </div>
 
-    <div class="landing-copy">
-      <p class="rating-line">For shelters, adopters, and pets waiting for home</p>
-      <h1>Pet Adoption Platform</h1>
-      <p>
-        Browse adoptable pets, send applications, message shelters, and track every adoption step in one friendly place.
-      </p>
-      <div class="landing-actions">
-        <a class="button primary landing-primary" href="#browse-pets" data-open-browse-tab>Browse Pets</a>
-      </div>
-      <div class="landing-hero-cards" aria-label="Platform highlights">
-        <div>
-          <strong>Browse</strong>
-          <span>Find pets by city, species, and personality.</span>
-        </div>
-        <div>
-          <strong>Apply</strong>
-          <span>Submit adoption forms without confusing steps.</span>
-        </div>
-        <div>
-          <strong>Track</strong>
-          <span>Follow applications, messages, and shelter updates.</span>
+      <div class="landing-copy">
+        <p class="rating-line">For shelters, adopters, and pets waiting for home</p>
+        <h1>Pet Adoption Platform</h1>
+        <p>
+          Browse adoptable pets, send applications, message shelters, and track every adoption step in one friendly place.
+        </p>
+        <div class="landing-actions">
+          <a class="button primary landing-primary" href="#browse-pets" data-open-browse-tab>Browse Pets</a>
         </div>
       </div>
+
+      <section class="landing-hero-features" aria-labelledby="landingHeroFeaturesTitle">
+        <div class="landing-hero-features-heading">
+          <p class="eyebrow">Features</p>
+          <h2 id="landingHeroFeaturesTitle">Adopt with clarity</h2>
+          <p>Focused tools for finding pets, applying, and keeping up with shelter replies.</p>
+        </div>
+        <div class="landing-hero-feature-grid">
+          <article>
+            <span>01</span>
+            <h3>Smart browsing</h3>
+            <p>Filter pets by species, age, shelter, and tags.</p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>Shelter context</h3>
+            <p>See shelter details beside each listing.</p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>Application timeline</h3>
+            <p>Track every request from start to finish.</p>
+          </article>
+          <article>
+            <span>04</span>
+            <h3>Built-in messages</h3>
+            <p>Keep questions tied to the right pet.</p>
+          </article>
+        </div>
+      </section>
     </div>
-  </div>
+  </section>
+
+  <section class="landing-info-band landing-process-band" aria-labelledby="landingProcessTitle">
+    <div class="landing-section-heading">
+      <p class="eyebrow">How It Works</p>
+      <h2 id="landingProcessTitle">A simple path from browsing to adoption</h2>
+    </div>
+    <div class="landing-process-grid">
+      <article>
+        <strong>1</strong>
+        <h3>Find a match</h3>
+        <p>Browse available pets and compare details that matter for your home.</p>
+      </article>
+      <article>
+        <strong>2</strong>
+        <h3>Send an application</h3>
+        <p>Share your home setup, experience, and reasons for adopting.</p>
+      </article>
+      <article>
+        <strong>3</strong>
+        <h3>Talk with the shelter</h3>
+        <p>Use messages for questions, visit details, and next steps.</p>
+      </article>
+      <article>
+        <strong>4</strong>
+        <h3>Track the decision</h3>
+        <p>Follow status updates until the adoption is completed.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="landing-cta-strip">
+    <div>
+      <p class="eyebrow">Ready for the next step?</p>
+      <h2>Create a profile to save applications and message shelters.</h2>
+    </div>
+    <a class="button primary" href="{% url 'register' %}" data-open-auth-tab="register">Create Account</a>
+  </section>
 
   <div class="landing-browse-overlay" data-browse-tab hidden>
     <section class="landing-browse-tab" role="dialog" aria-modal="true" aria-labelledby="landingBrowseTitle">
@@ -87,7 +142,220 @@
       </div>
 
       <div class="landing-browse-actions">
-        <a class="button primary" href="{% url 'login' %}?role=user">Login to Browse All Pets</a>
+        <a class="button primary" href="{% url 'login' %}?role=user" data-open-auth-tab="login" data-login-role="user">Login to Browse All Pets</a>
+      </div>
+    </section>
+  </div>
+
+  <div
+    class="landing-auth-overlay{% if landing_auth_open %} show{% endif %}{% if landing_auth_view == 'adopter' or landing_auth_view == 'shelter' %} landing-auth-required{% endif %}"
+    data-auth-tab
+    data-auth-start-view="{{ landing_auth_view }}"
+    data-auth-start-role="{{ landing_login_role }}"
+    {% if not landing_auth_open %}hidden{% endif %}
+  >
+    <section class="landing-auth-tab" role="dialog" aria-modal="true" aria-labelledby="landingAuthTitle">
+      <button type="button" class="landing-browse-close landing-auth-close" data-close-auth-tab aria-label="Close account tab">&times;</button>
+      <div class="landing-auth-shell">
+        <div class="landing-auth-copy">
+          <p class="eyebrow">Pet Adoption</p>
+          <h2 id="landingAuthTitle">Keep every adoption step in one place.</h2>
+          <p>Log in to continue an application, or create an account to save your details and message shelters.</p>
+        </div>
+
+        <div class="landing-auth-card">
+          <div class="landing-auth-tabs" role="tablist" aria-label="Account actions">
+            <button type="button" class="{% if landing_auth_view == 'login' %}active{% endif %}" data-auth-view="login">Login</button>
+            <button type="button" class="{% if landing_auth_view == 'register' %}active{% endif %}" data-auth-view="register">Create Account</button>
+          </div>
+
+          <div class="landing-auth-panel" data-auth-panel="login" {% if landing_auth_view != "login" %}hidden{% endif %}>
+            <h3>Login</h3>
+            <p class="auth-login-note">Choose the account type that matches your profile.</p>
+            <div class="landing-auth-role-toggle" aria-label="Login account type">
+              <button type="button" class="{% if landing_login_role != 'staff' %}active{% endif %}" data-login-role-option="user">Adopter</button>
+              <button type="button" class="{% if landing_login_role == 'staff' %}active{% endif %}" data-login-role-option="staff">Shelter Staff</button>
+            </div>
+            <form class="auth-login-form landing-login-form" method="post" action="{% url 'home' %}">
+              {% csrf_token %}
+              <input type="hidden" name="landing_auth_action" value="login">
+              <input type="hidden" name="login_role" value="{{ landing_login_role }}" data-login-role-input>
+              {% if landing_next_url %}<input type="hidden" name="next" value="{{ landing_next_url }}">{% endif %}
+              {{ landing_login_form.non_field_errors }}
+              <label class="landing-auth-field">
+                <span>Username</span>
+                <input class="field" type="text" name="username" id="landing_login_username" autocomplete="username" value="{{ landing_login_form.username.value|default_if_none:'' }}" required>
+                {{ landing_login_form.username.errors }}
+              </label>
+              <label class="landing-auth-field">
+                <span>Password</span>
+                <input class="field" type="password" name="password" id="landing_login_password" autocomplete="current-password" required>
+                {{ landing_login_form.password.errors }}
+              </label>
+              <button type="submit" class="primary" data-login-submit>{% if landing_login_role == "staff" %}Login as Shelter Staff{% else %}Login as Adopter{% endif %}</button>
+            </form>
+            <div class="landing-auth-divider">or</div>
+            <form class="social-login-form landing-google-form" method="get" action="{% url 'google_login' %}">
+              <input type="hidden" name="role" value="{{ landing_login_role|default:'user' }}" data-google-login-role-input>
+              {% include "registration/partials/google_button.html" %}
+            </form>
+            <p class="landing-auth-switch">New here? <button type="button" data-auth-view="register">Create an account</button></p>
+          </div>
+
+          <div class="landing-auth-panel" data-auth-panel="register" {% if landing_auth_view != "register" %}hidden{% endif %}>
+            <h3>Create Account</h3>
+            <p class="auth-login-note">Choose the account type that matches your profile.</p>
+            <form class="auth-register-form landing-register-form" method="post" action="{% url 'home' %}">
+              {% csrf_token %}
+              <input type="hidden" name="landing_auth_action" value="register">
+              {{ landing_register_form.non_field_errors }}
+              <div class="register-fields">
+                <div class="register-field register-field-full landing-account-type-field">
+                  <label>{{ landing_register_form.account_type.label }}</label>
+                  {{ landing_register_form.account_type }}
+                  {{ landing_register_form.account_type.errors }}
+                </div>
+                <label class="register-field">
+                  <span>{{ landing_register_form.username.label }}</span>
+                  {{ landing_register_form.username }}
+                  {{ landing_register_form.username.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_register_form.email.label }}</span>
+                  {{ landing_register_form.email }}
+                  {{ landing_register_form.email.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_register_form.first_name.label }}</span>
+                  {{ landing_register_form.first_name }}
+                  {{ landing_register_form.first_name.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_register_form.last_name.label }}</span>
+                  {{ landing_register_form.last_name }}
+                  {{ landing_register_form.last_name.errors }}
+                </label>
+              </div>
+              <div class="register-fields">
+                <label class="register-field register-field-full">
+                  <span>{{ landing_register_form.password1.label }}</span>
+                  {{ landing_register_form.password1 }}
+                  {{ landing_register_form.password1.errors }}
+                  {% if landing_register_form.password1.help_text %}<small>{{ landing_register_form.password1.help_text }}</small>{% endif %}
+                </label>
+                <label class="register-field register-field-full">
+                  <span>{{ landing_register_form.password2.label }}</span>
+                  {{ landing_register_form.password2 }}
+                  {{ landing_register_form.password2.errors }}
+                  {% if landing_register_form.password2.help_text %}<small>{{ landing_register_form.password2.help_text }}</small>{% endif %}
+                </label>
+              </div>
+              <button type="submit" class="primary">Sign Up</button>
+            </form>
+            <div class="landing-auth-divider">or</div>
+            <form class="social-login-form landing-google-form" method="get" action="{% url 'google_login' %}">
+              <input type="hidden" name="role" value="user" data-google-register-role-input>
+              {% include "registration/partials/google_button.html" %}
+            </form>
+            <p class="landing-auth-switch">Already registered? <button type="button" data-auth-view="login">Login</button></p>
+          </div>
+
+          <div class="landing-auth-panel landing-required-panel" data-auth-panel="adopter" {% if landing_auth_view != "adopter" %}hidden{% endif %}>
+            <p class="eyebrow">Required Step</p>
+            <h3>Complete your adopter profile</h3>
+            <p class="auth-login-note">Tell shelters the basics about your location, preferred pet, home, and experience. Your adoption forms will use these details as a starting point.</p>
+            <form class="auth-register-form landing-register-form" method="post" action="{% url 'home' %}">
+              {% csrf_token %}
+              <input type="hidden" name="landing_auth_action" value="adopter_profile">
+              {% if landing_next_url %}<input type="hidden" name="next" value="{{ landing_next_url }}">{% endif %}
+              {{ landing_adopter_form.non_field_errors }}
+              <div class="register-fields">
+                <label class="register-field">
+                  <span>{{ landing_adopter_form.city.label }}</span>
+                  {{ landing_adopter_form.city }}
+                  {{ landing_adopter_form.city.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_adopter_form.preferred_species.label }}</span>
+                  {{ landing_adopter_form.preferred_species }}
+                  {{ landing_adopter_form.preferred_species.errors }}
+                </label>
+                <label class="register-field register-field-full">
+                  <span>{{ landing_adopter_form.home_type.label }}</span>
+                  {{ landing_adopter_form.home_type }}
+                  {{ landing_adopter_form.home_type.errors }}
+                </label>
+                <label class="register-field register-field-full">
+                  <span>{{ landing_adopter_form.experience.label }}</span>
+                  {{ landing_adopter_form.experience }}
+                  {{ landing_adopter_form.experience.errors }}
+                </label>
+              </div>
+              <button type="submit" class="primary">Save and Continue</button>
+            </form>
+            <p class="landing-auth-switch"><button type="button" data-skip-auth-tab>Skip for now</button></p>
+          </div>
+
+          <div class="landing-auth-panel landing-required-panel" data-auth-panel="shelter" {% if landing_auth_view != "shelter" %}hidden{% endif %}>
+            <p class="eyebrow">Required Step</p>
+            <h3>Create shelter profile</h3>
+            <p class="auth-login-note">Create a new shelter profile or enter an existing shelter name to link it to your staff account. You can post pets after this is saved.</p>
+            <form class="auth-register-form landing-register-form" method="post" action="{% url 'home' %}" enctype="multipart/form-data">
+              {% csrf_token %}
+              <input type="hidden" name="landing_auth_action" value="shelter_setup">
+              {{ landing_shelter_form.non_field_errors }}
+              <div class="register-fields">
+                <label class="register-field register-field-full">
+                  <span>{{ landing_shelter_form.name.label }}</span>
+                  {{ landing_shelter_form.name }}
+                  {{ landing_shelter_form.name.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_shelter_form.email.label }}</span>
+                  {{ landing_shelter_form.email }}
+                  {{ landing_shelter_form.email.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_shelter_form.phone.label }}</span>
+                  {{ landing_shelter_form.phone }}
+                  {{ landing_shelter_form.phone.errors }}
+                </label>
+                <label class="register-field register-field-full">
+                  <span>{{ landing_shelter_form.address.label }}</span>
+                  {{ landing_shelter_form.address }}
+                  {{ landing_shelter_form.address.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_shelter_form.city.label }}</span>
+                  {{ landing_shelter_form.city }}
+                  {{ landing_shelter_form.city.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_shelter_form.photo.label }}</span>
+                  {{ landing_shelter_form.photo }}
+                  {{ landing_shelter_form.photo.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_shelter_form.latitude.label }}</span>
+                  {{ landing_shelter_form.latitude }}
+                  {{ landing_shelter_form.latitude.errors }}
+                </label>
+                <label class="register-field">
+                  <span>{{ landing_shelter_form.longitude.label }}</span>
+                  {{ landing_shelter_form.longitude }}
+                  {{ landing_shelter_form.longitude.errors }}
+                </label>
+                <label class="register-field register-field-full">
+                  <span>{{ landing_shelter_form.description.label }}</span>
+                  {{ landing_shelter_form.description }}
+                  {{ landing_shelter_form.description.errors }}
+                </label>
+              </div>
+              <button type="submit" class="primary">Save and Continue</button>
+            </form>
+            <p class="landing-auth-switch"><button type="button" data-skip-auth-tab>Skip for now</button></p>
+          </div>
+        </div>
       </div>
     </section>
   </div>
@@ -97,9 +365,9 @@
 {% block extra_js %}
 <script>
   (function(){
-    const openButton = document.querySelector('[data-open-browse-tab]');
+    const openButtons = document.querySelectorAll('[data-open-browse-tab]');
     const overlay = document.querySelector('[data-browse-tab]');
-    if (!openButton || !overlay) return;
+    if (!openButtons.length || !overlay) return;
 
     const closeButton = overlay.querySelector('[data-close-browse-tab]');
 
@@ -116,10 +384,12 @@
       overlay.classList.remove('show');
       overlay.hidden = true;
       document.body.classList.remove('landing-browse-open');
-      openButton.focus();
+      openButtons[0].focus();
     }
 
-    openButton.addEventListener('click', openTab);
+    openButtons.forEach(function(openButton){
+      openButton.addEventListener('click', openTab);
+    });
     if (window.location.hash === '#browse-pets') openTab();
     if (closeButton) closeButton.addEventListener('click', closeTab);
     overlay.addEventListener('click', function(event){
@@ -128,6 +398,121 @@
     document.addEventListener('keydown', function(event){
       if (event.key === 'Escape' && !overlay.hidden) closeTab();
     });
+  })();
+</script>
+<script>
+  (function(){
+    const openButtons = document.querySelectorAll('[data-open-auth-tab]');
+    const overlay = document.querySelector('[data-auth-tab]');
+    if (!openButtons.length || !overlay) return;
+
+    const closeButton = overlay.querySelector('[data-close-auth-tab]');
+    const panels = overlay.querySelectorAll('[data-auth-panel]');
+    const viewButtons = overlay.querySelectorAll('[data-auth-view]');
+    const tabButtons = overlay.querySelectorAll('.landing-auth-tabs [data-auth-view]');
+    const roleButtons = overlay.querySelectorAll('[data-login-role-option]');
+    const roleInput = overlay.querySelector('[data-login-role-input]');
+    const loginSubmit = overlay.querySelector('[data-login-submit]');
+    const skipButtons = overlay.querySelectorAll('[data-skip-auth-tab]');
+    const googleLoginRoleInput = overlay.querySelector('[data-google-login-role-input]');
+    const googleRegisterRoleInput = overlay.querySelector('[data-google-register-role-input]');
+    const accountInputs = overlay.querySelectorAll('input[name="account_type"]');
+    const browseOverlay = document.querySelector('[data-browse-tab]');
+    let lastTrigger = null;
+
+    function setView(view){
+      const validViews = ['login', 'register', 'adopter', 'shelter'];
+      const nextView = validViews.indexOf(view) >= 0 ? view : 'login';
+      const requiredView = nextView === 'adopter' || nextView === 'shelter';
+      panels.forEach(function(panel){
+        panel.hidden = panel.dataset.authPanel !== nextView;
+      });
+      tabButtons.forEach(function(button){
+        button.classList.toggle('active', button.dataset.authView === nextView);
+      });
+      overlay.classList.toggle('landing-auth-required', requiredView);
+    }
+
+    function setLoginRole(role){
+      const nextRole = role === 'staff' ? 'staff' : 'user';
+      if (roleInput) roleInput.value = nextRole;
+      if (googleLoginRoleInput) googleLoginRoleInput.value = nextRole;
+      roleButtons.forEach(function(button){
+        button.classList.toggle('active', button.dataset.loginRoleOption === nextRole);
+      });
+      if (loginSubmit) {
+        loginSubmit.textContent = nextRole === 'staff' ? 'Login as Shelter Staff' : 'Login as Adopter';
+      }
+    }
+
+    function syncRegisterGoogleRole(){
+      if (!googleRegisterRoleInput) return;
+      const selected = overlay.querySelector('input[name="account_type"]:checked');
+      googleRegisterRoleInput.value = selected && selected.value === 'staff' ? 'staff' : 'user';
+    }
+
+    function closeBrowseTab(){
+      if (!browseOverlay || browseOverlay.hidden) return;
+      browseOverlay.classList.remove('show');
+      browseOverlay.hidden = true;
+      document.body.classList.remove('landing-browse-open');
+    }
+
+    function openAuthTab(event){
+      if (event) event.preventDefault();
+      lastTrigger = event ? event.currentTarget : null;
+      closeBrowseTab();
+      setView(lastTrigger && lastTrigger.dataset.openAuthTab);
+      setLoginRole(lastTrigger && lastTrigger.dataset.loginRole);
+      overlay.hidden = false;
+      document.body.classList.add('landing-auth-open');
+      requestAnimationFrame(function(){
+        overlay.classList.add('show');
+        if (closeButton) closeButton.focus();
+      });
+    }
+
+    function closeAuthTab(){
+      overlay.classList.remove('show');
+      overlay.hidden = true;
+      document.body.classList.remove('landing-auth-open');
+      if (lastTrigger) lastTrigger.focus();
+    }
+
+    openButtons.forEach(function(button){
+      button.addEventListener('click', openAuthTab);
+    });
+    viewButtons.forEach(function(button){
+      button.addEventListener('click', function(){
+        setView(button.dataset.authView);
+      });
+    });
+    roleButtons.forEach(function(button){
+      button.addEventListener('click', function(){
+        setLoginRole(button.dataset.loginRoleOption);
+      });
+    });
+    accountInputs.forEach(function(input){
+      input.addEventListener('change', syncRegisterGoogleRole);
+    });
+    skipButtons.forEach(function(button){
+      button.addEventListener('click', closeAuthTab);
+    });
+    if (closeButton) closeButton.addEventListener('click', closeAuthTab);
+    overlay.addEventListener('click', function(event){
+      if (event.target === overlay) closeAuthTab();
+    });
+    document.addEventListener('keydown', function(event){
+      if (event.key === 'Escape' && !overlay.hidden) closeAuthTab();
+    });
+
+    setView(overlay.dataset.authStartView);
+    setLoginRole(overlay.dataset.authStartRole);
+    syncRegisterGoogleRole();
+    if (!overlay.hidden) {
+      document.body.classList.add('landing-auth-open');
+      if (closeButton) closeButton.focus();
+    }
   })();
 </script>
 {% endblock %}

@@ -258,3 +258,19 @@ class MessageForm(BootstrapFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._style_fields()
+
+
+class CareTipsForm(BootstrapFormMixin, forms.Form):
+    SPECIES_CHOICES = [
+        ("", "Select Species"),
+        ("dog", "Dog"),
+        ("cat", "Cat"),
+        ("bird", "Bird"),
+        ("rabbit", "Rabbit"),
+    ]
+    species = forms.ChoiceField(choices=SPECIES_CHOICES, required=True)
+    breed = forms.CharField(max_length=100, required=False, label="Breed (optional)")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._style_fields()

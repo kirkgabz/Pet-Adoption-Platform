@@ -32,6 +32,9 @@
           <a href="{% url 'application-list' %}" {% if active_url == "application-list" or active_url == "application-detail" or active_url == "application-update" or active_url == "application-delete" or active_url == "application-create" %}class="active"{% endif %}>Applications</a>
           <a href="{% url 'message-list' %}" {% if active_url == "message-list" %}class="active"{% endif %}>Messages</a>
         {% endif %}
+        {% if not user.is_authenticated or user.is_staff %}
+          <a href="{% url 'care-tips' %}" {% if active_url == "care-tips" %}class="active"{% endif %}>Care Tips</a>
+        {% endif %}
         {% if user.is_superuser %}
           <a href="{% url 'user-list' %}" {% if active_url == "user-list" or active_url == "user-update" or active_url == "user-delete" %}class="active"{% endif %}>Users</a>
         {% endif %}

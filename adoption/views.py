@@ -15,6 +15,7 @@ from .forms import (
     AdopterProfileForm,
     AdoptionApplicationForm,
     ApplicationStatusForm,
+    CareTipsForm,
     MessageForm,
     PersonalityTagForm,
     PetForm,
@@ -71,6 +72,42 @@ def staff_pets_for(user):
     return queryset.none()
 
 
+def landing_pets_queryset():
+    return (
+        Pet.objects.select_related("shelter")
+        .prefetch_related("personality_tags")
+        .filter(status=Pet.Status.AVAILABLE, is_archived=False)
+        .order_by("-created_at")[:6]
+    )
+
+
+def landing_page_context(request, **overrides):
+    user = request.user
+    context = {
+        "landing_pets": landing_pets_queryset(),
+        "landing_login_form": AuthenticationForm(request),
+        "landing_register_form": UserRegisterForm(),
+        "landing_auth_open": False,
+        "landing_auth_view": "login",
+        "landing_login_role": "user",
+        "landing_next_url": "",
+    }
+
+    if user.is_authenticated and not user.is_staff:
+        profile, _ = AdopterProfile.objects.get_or_create(user=user)
+        context["landing_adopter_form"] = AdopterProfileForm(instance=profile)
+    else:
+        context["landing_adopter_form"] = AdopterProfileForm()
+
+    if user.is_authenticated and user.is_staff and not user.is_superuser:
+        context["landing_shelter_form"] = ShelterForm(user=user)
+    else:
+        context["landing_shelter_form"] = ShelterForm()
+
+    context.update(overrides)
+    return context
+
+
 def staff_applications_for(user):
     queryset = AdoptionApplication.objects.select_related("pet", "applicant", "pet__shelter")
     if user.is_superuser:
@@ -107,20 +144,145 @@ class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
 class LandingView(TemplateView):
     template_name = "adoption/landing.html"
 
+    def get_landing_pets(self):
+        return landing_pets_queryset()
+
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["landing_pets"] = (
-            Pet.objects.select_related("shelter")
-            .prefetch_related("personality_tags")
-            .filter(status=Pet.Status.AVAILABLE, is_archived=False)
-            .order_by("-created_at")[:6]
-        )
+        context = landing_page_context(self.request)
+        context.update(kwargs)
         return context
+
+    def post(self, request, *args, **kwargs):
+        action = request.POST.get("landing_auth_action")
+        if action == "login":
+            return self.post_login(request)
+        if action == "register":
+            return self.post_register(request)
+        if action == "adopter_profile":
+            return self.post_adopter_profile(request)
+        if action == "shelter_setup":
+            return self.post_shelter_setup(request)
+        return redirect("home")
+
+    def render_auth_tab(self, **overrides):
+        return self.render_to_response(
+            self.get_context_data(landing_auth_open=True, **overrides)
+        )
+
+    def render_adopter_required(self, next_url=""):
+        profile, _ = AdopterProfile.objects.get_or_create(user=self.request.user)
+        return self.render_auth_tab(
+            landing_auth_view="adopter",
+            landing_adopter_form=AdopterProfileForm(instance=profile),
+            landing_next_url=next_url,
+        )
+
+    def render_shelter_required(self, form=None):
+        return self.render_auth_tab(
+            landing_auth_view="shelter",
+            landing_shelter_form=form or ShelterForm(user=self.request.user),
+        )
+
+    def post_login(self, request):
+        role = request.POST.get("login_role", "user")
+        if role not in {"user", "staff"}:
+            role = "user"
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            if role == "staff" and not user.is_staff:
+                form.add_error(None, "Please log in with a shelter staff account.")
+            elif role == "user" and user.is_staff:
+                form.add_error(None, "This is a shelter staff account. Choose Shelter Staff Login.")
+            else:
+                login(request, user)
+                success_url = get_safe_redirect_url(request) or reverse(settings.LOGIN_REDIRECT_URL)
+                if not adopter_has_completed_onboarding(user):
+                    return self.render_adopter_required(success_url)
+                if user.is_staff and not user.is_superuser and not staff_shelters_for(user).exists():
+                    return self.render_shelter_required()
+                return redirect(success_url)
+        return self.render_auth_tab(
+            landing_login_form=form,
+            landing_auth_view="login",
+            landing_login_role=role,
+        )
+
+    def post_register(self, request):
+        form = UserRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+            if user.is_staff:
+                return self.render_shelter_required()
+            AdopterProfile.objects.get_or_create(user=user)
+            return self.render_adopter_required()
+        return self.render_auth_tab(
+            landing_register_form=form,
+            landing_auth_view="register",
+        )
+
+    def post_adopter_profile(self, request):
+        if not request.user.is_authenticated:
+            return redirect("home")
+        if request.user.is_staff:
+            return redirect("pet-list")
+        profile, _ = AdopterProfile.objects.get_or_create(user=request.user)
+        next_url = get_safe_redirect_url(request)
+        form = AdopterProfileForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your adopter profile has been saved.")
+            return redirect(next_url or "available-pets")
+        return self.render_auth_tab(
+            landing_auth_view="adopter",
+            landing_adopter_form=form,
+            landing_next_url=next_url,
+        )
+
+    def post_shelter_setup(self, request):
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return redirect("home")
+        form = ShelterForm(request.POST, request.FILES, user=request.user)
+        if form.is_valid():
+            if not request.user.is_superuser:
+                form.instance.email = request.user.email
+                existing_shelter = Shelter.objects.filter(name__iexact=form.cleaned_data["name"]).first()
+                if existing_shelter:
+                    update_fields = ["email", "phone", "address", "city", "latitude", "longitude", "description"]
+                    for field_name in update_fields:
+                        setattr(existing_shelter, field_name, getattr(form.instance, field_name))
+                    if form.cleaned_data.get("photo"):
+                        existing_shelter.photo = form.cleaned_data["photo"]
+                        update_fields.append("photo")
+                    existing_shelter.save(update_fields=update_fields)
+                    messages.success(request, "Shelter profile linked.")
+                    return redirect(existing_shelter)
+            shelter = form.save()
+            messages.success(request, "Shelter profile saved.")
+            return redirect(shelter)
+        return self.render_shelter_required(form)
 
 
 class RoleBasedLoginView(LoginView):
     template_name = "registration/login.html"
     authentication_form = AuthenticationForm
+
+    def get(self, request, *args, **kwargs):
+        login_role = request.GET.get("role")
+        if login_role not in {"user", "staff"}:
+            login_role = "user"
+        return render(
+            request,
+            "adoption/landing.html",
+            landing_page_context(
+                request,
+                landing_auth_open=True,
+                landing_auth_view="login",
+                landing_login_role=login_role,
+                landing_next_url=get_safe_redirect_url(request),
+            ),
+        )
 
     def form_valid(self, form):
         role = self.request.POST.get("login_role", "user")
@@ -133,6 +295,23 @@ class RoleBasedLoginView(LoginView):
             return self.form_invalid(form)
         self.authenticated_user = user
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        login_role = self.request.POST.get("login_role")
+        if login_role not in {"user", "staff"}:
+            login_role = "user"
+        return render(
+            self.request,
+            "adoption/landing.html",
+            landing_page_context(
+                self.request,
+                landing_login_form=form,
+                landing_auth_open=True,
+                landing_auth_view="login",
+                landing_login_role=login_role,
+                landing_next_url=get_safe_redirect_url(self.request),
+            ),
+        )
 
     def get_success_url(self):
         success_url = super().get_success_url()
@@ -153,6 +332,10 @@ class RoleBasedLoginView(LoginView):
 
 
 def google_login(request):
+    role = request.GET.get("role") or request.POST.get("role") or "user"
+    if role not in {"user", "staff"}:
+        role = "user"
+    request.session["google_account_role"] = role
     if not is_google_login_configured(request):
         messages.error(request, "Google login is not configured yet. Use username and password to log in.")
         return redirect("login")
@@ -547,8 +730,7 @@ class AvailablePetsView(ListView):
         tag = self.request.GET.get("tag")
         shelter = self.request.GET.get("shelter")
         age = self.request.GET.get("age")
-        latitude = self.request.GET.get("lat")
-        longitude = self.request.GET.get("lng")
+        latitude, longitude = self.get_coordinate_pair()
         if species:
             queryset = queryset.filter(species=species)
         if location:
@@ -585,11 +767,27 @@ class AvailablePetsView(ListView):
             radius = self.near_me_radius_km
         return max(radius, 1.0)
 
+    def get_coordinate_value(self, *names):
+        for name in names:
+            value = self.request.GET.get(name)
+            if value not in (None, ""):
+                return value.strip()
+        return ""
+
+    def get_coordinate_pair(self):
+        return (
+            self.get_coordinate_value("lat", "latitude"),
+            self.get_coordinate_value("lng", "longitude", "lon"),
+        )
+
     def get_nearby_pet_list(self, queryset, latitude, longitude):
         try:
             latf = float(latitude)
             lngf = float(longitude)
         except (TypeError, ValueError):
+            messages.error(self.request, "Could not use your current location. Please try again or type your city.")
+            return queryset.none()
+        if not (-90 <= latf <= 90 and -180 <= lngf <= 180):
             messages.error(self.request, "Could not use your current location. Please try again or type your city.")
             return queryset.none()
 
@@ -622,6 +820,7 @@ class AvailablePetsView(ListView):
             .order_by("name")
         )
         context["age_choices"] = self.age_choices
+        latitude, longitude = self.get_coordinate_pair()
         application_initial = {}
         if self.request.user.is_authenticated and not self.request.user.is_staff:
             application_initial = adopter_profile_initial(self.request.user)
@@ -631,7 +830,12 @@ class AvailablePetsView(ListView):
         else:
             context["favorite_pet_ids"] = set()
         context["application_form"] = AdoptionApplicationForm(initial=application_initial)
-        context["near_me_active"] = bool(self.request.GET.get("lat") and self.request.GET.get("lng"))
+        context["near_me_active"] = bool(latitude and longitude)
+        context["near_me_latitude"] = latitude
+        context["near_me_longitude"] = longitude
+        context["near_me_source"] = self.request.GET.get("location_source", "")
+        context["near_me_label"] = self.request.GET.get("location_label", "")
+        context["near_me_accuracy"] = self.request.GET.get("accuracy", "")
         context["near_me_radius"] = self.get_radius()
         return context
 
@@ -787,6 +991,9 @@ class ShelterCreateView(StaffRequiredMixin, CreateView):
     model = Shelter
     form_class = ShelterForm
 
+    def is_setup_mode(self):
+        return self.request.user.is_staff and not self.request.user.is_superuser
+
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated and request.user.is_staff and not request.user.is_superuser:
             if staff_shelters_for(request.user).exists():
@@ -794,14 +1001,26 @@ class ShelterCreateView(StaffRequiredMixin, CreateView):
                 return redirect("shelter-list")
         return super().dispatch(request, *args, **kwargs)
 
+    def get_template_names(self):
+        if self.is_setup_mode():
+            return ["adoption/landing.html"]
+        return super().get_template_names()
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
         return kwargs
 
     def get_context_data(self, **kwargs):
+        if self.is_setup_mode():
+            return landing_page_context(
+                self.request,
+                landing_shelter_form=kwargs.get("form") or self.get_form(),
+                landing_auth_open=True,
+                landing_auth_view="shelter",
+            )
         context = super().get_context_data(**kwargs)
-        context["shelter_setup_mode"] = self.request.user.is_staff and not self.request.user.is_superuser
+        context["shelter_setup_mode"] = False
         return context
 
     def form_valid(self, form):
@@ -1122,11 +1341,13 @@ def register(request):
         form = UserRegisterForm()
     return render(
         request,
-        "registration/register.html",
-        {
-            "form": form,
-            "google_login_configured": is_google_login_configured(request),
-        },
+        "adoption/landing.html",
+        landing_page_context(
+            request,
+            landing_register_form=form,
+            landing_auth_open=True,
+            landing_auth_view="register",
+        ),
     )
 
 
@@ -1153,7 +1374,17 @@ def adopter_onboarding(request):
     else:
         form = AdopterProfileForm(instance=profile)
 
-    return render(request, "adoption/adopter_onboarding.html", {"form": form, "next_url": next_url})
+    return render(
+        request,
+        "adoption/landing.html",
+        landing_page_context(
+            request,
+            landing_adopter_form=form,
+            landing_auth_open=True,
+            landing_auth_view="adopter",
+            landing_next_url=next_url,
+        ),
+    )
 
 
 def adopter_profile(request):
@@ -1216,6 +1447,9 @@ def apply_to_adopt(request, pk):
     if request.user.is_staff:
         messages.error(request, "Shelter staff accounts cannot apply to adopt pets.")
         return redirect("pet-list")
+    if not adopter_has_completed_onboarding(request.user):
+        messages.info(request, "Complete your adopter profile before applying to adopt.")
+        return redirect(adopter_onboarding_redirect_url(request.path))
     existing_application = AdoptionApplication.objects.filter(pet=pet, applicant=request.user).first()
     if pet.posted_by == request.user:
         messages.error(request, "You cannot apply to adopt your own listed pet.")
@@ -1369,3 +1603,59 @@ def nearby_shelters(request):
         "adoption/nearby_shelters.html",
         {"results": results, "latitude": latitude, "longitude": longitude, "radius": radius},
     )
+
+
+def care_tips(request):
+    tips = None
+    species = None
+    breed = None
+    form = CareTipsForm(request.GET or None)
+
+    if form.is_valid():
+        species = form.cleaned_data["species"]
+        breed = form.cleaned_data.get("breed")
+
+        tips_data = {
+            "dog": [
+                "Provide a balanced diet suitable for their age and size.",
+                "Ensure daily exercise through walks and playtime.",
+                "Maintain regular veterinary check-ups and vaccinations.",
+                "Socialize your dog with other pets and people early on.",
+            ],
+            "cat": [
+                "Provide multiple scratching posts to save your furniture.",
+                "Keep the litter box clean and in a quiet location.",
+                "Engage in daily play sessions to satisfy their hunting instinct.",
+                "Offer fresh water at all times, preferably in a fountain.",
+            ],
+            "bird": [
+                "Ensure their cage is large enough for short flights.",
+                "Provide a variety of fresh fruits and vegetables daily.",
+                "Keep them in a draft-free environment with plenty of light.",
+                "Spend time talking and interacting with them to prevent boredom.",
+            ],
+            "rabbit": [
+                "Unlimited high-quality grass hay is essential for their digestion.",
+                "Provide a safe, bunny-proofed area for daily exercise.",
+                "Groom them regularly to prevent hairballs.",
+                "Never pick them up by their ears; support their hindquarters.",
+            ],
+        }
+
+        tips = tips_data.get(species, [])
+        if breed and species == "dog":
+            if "retriever" in breed.lower() or "labrador" in breed.lower():
+                tips.append("Labs and Retrievers are prone to obesity; monitor their food intake closely.")
+            elif "german shepherd" in breed.lower():
+                tips.append("German Shepherds are highly intelligent and need mental stimulation.")
+        elif breed and species == "cat":
+            if "siamese" in breed.lower():
+                tips.append("Siamese cats are very vocal and social; they thrive on interaction.")
+
+    context = {
+        "form": form,
+        "tips": tips,
+        "species": species,
+        "breed": breed,
+    }
+    return render(request, "adoption/care_tips.html", context)

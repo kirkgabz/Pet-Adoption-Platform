@@ -20,7 +20,7 @@ class AdopterOnboardingRequiredMiddleware:
             return False
 
         path = request.path_info
-        if path in {reverse("adopter-onboarding"), reverse("logout"), reverse("login")}:
+        if path in {reverse("home"), reverse("adopter-onboarding"), reverse("logout"), reverse("login")}:
             return False
 
         if self._is_asset_path(path):
