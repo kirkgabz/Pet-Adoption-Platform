@@ -93,6 +93,8 @@ class Pet(models.Model):
     shelter = models.ForeignKey(Shelter, on_delete=models.CASCADE, related_name="pets")
     personality_tags = models.ManyToManyField(PersonalityTag, blank=True, related_name="pets")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.AVAILABLE)
+    is_archived = models.BooleanField(default=False)
+    archived_at = models.DateTimeField(null=True, blank=True)
     posted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -158,6 +160,25 @@ class AdoptionApplication(models.Model):
     class Meta:
         ordering = ["-created_at"]
         unique_together = ("pet", "applicant")
+
+    def sync_pet_status(self):
+        applications = self.pet.applications.all()
+        if applications.filter(status=self.Status.COMPLETED).exists():
+            status = Pet.Status.ADOPTED
+        elif applications.filter(
+            status__in=[
+                self.Status.SUBMITTED,
+                self.Status.REVIEWING,
+                self.Status.APPROVED,
+            ]
+        ).exists():
+            status = Pet.Status.PENDING
+        else:
+            status = Pet.Status.AVAILABLE
+
+        if self.pet.status != status:
+            self.pet.status = status
+            self.pet.save(update_fields=["status", "updated_at"])
 
     def __str__(self):
         return f"{self.applicant} applying for {self.pet}"

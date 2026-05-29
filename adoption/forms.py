@@ -242,6 +242,12 @@ class ApplicationStatusForm(BootstrapFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self._style_fields()
 
+    def save(self, commit=True):
+        application = super().save(commit=commit)
+        if commit:
+            application.sync_pet_status()
+        return application
+
 
 class MessageForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:

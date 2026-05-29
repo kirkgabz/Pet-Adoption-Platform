@@ -24,6 +24,11 @@ class ShelterStaffWorkflowTests(TestCase):
 
         self.assertContains(response, "Create Shelter Profile")
         self.assertContains(response, "Complete your shelter profile before posting pets.")
+        self.assertContains(
+            response,
+            f'class="sidebar-card sidebar-card-link" href="{reverse("shelter-create")}" aria-label="Set up your shelter profile"',
+        )
+        self.assertContains(response, "Set up shelter profile")
 
     def test_staff_without_shelter_is_redirected_before_posting_pet(self):
         self.client.force_login(self.staff)
@@ -36,6 +41,20 @@ class ShelterStaffWorkflowTests(TestCase):
         self.client.force_login(self.staff)
 
         response = self.client.get(reverse("pet-list"))
+
+        self.assertRedirects(response, reverse("shelter-create"))
+
+    def test_staff_without_shelter_is_redirected_before_managing_pets(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("staff-pet-list"))
+
+        self.assertRedirects(response, reverse("shelter-create"))
+
+    def test_staff_without_shelter_is_redirected_before_opening_messages(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("message-list"))
 
         self.assertRedirects(response, reverse("shelter-create"))
 
@@ -152,6 +171,43 @@ class ShelterStaffWorkflowTests(TestCase):
         self.assertContains(response, "Description")
         self.assertContains(response, "Photo/logo")
 
+    def test_staff_can_edit_linked_shelter_profile(self):
+        shelter = Shelter.objects.create(
+            name="Happy Tails Shelter",
+            email=self.staff.email,
+            phone="555-0100",
+            address="123 Rescue Lane",
+            city="Cebu",
+            description="Original rescue info.",
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            reverse("shelter-update", args=[shelter.pk]),
+            {
+                "name": "Happy Tails Shelter",
+                "email": "changed@example.com",
+                "phone": "555-0199",
+                "address": "456 Adoption Avenue",
+                "city": "Mandaue",
+                "latitude": "",
+                "longitude": "",
+                "description": "Updated rescue info for adopters.",
+            },
+        )
+
+        shelter.refresh_from_db()
+        self.assertEqual(shelter.email, self.staff.email)
+        self.assertEqual(shelter.phone, "555-0199")
+        self.assertEqual(shelter.address, "456 Adoption Avenue")
+        self.assertEqual(shelter.city, "Mandaue")
+        self.assertEqual(shelter.description, "Updated rescue info for adopters.")
+        self.assertRedirects(response, shelter.get_absolute_url())
+
+        detail_response = self.client.get(shelter.get_absolute_url())
+        self.assertContains(detail_response, "Edit Shelter")
+        self.assertContains(detail_response, "Updated rescue info for adopters.")
+
 
 class FrontendRenderTests(TestCase):
     def setUp(self):
@@ -244,6 +300,33 @@ class FrontendRenderTests(TestCase):
         self.assertContains(detail_response, "Contact Shelter")
         self.assertContains(detail_response, "View Shelter")
         self.assertContains(detail_response, f'href="mailto:{self.shelter.email}"')
+
+    def test_public_can_view_shelter_profile_contact_and_posted_pets(self):
+        archived_pet = Pet.objects.create(
+            name="Hidden Pup",
+            species=Pet.Species.DOG,
+            breed="Mixed",
+            age=4,
+            description="Archived listing.",
+            shelter=self.shelter,
+            posted_by=self.staff,
+            is_archived=True,
+        )
+
+        response = self.client.get(self.shelter.get_absolute_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.shelter.name)
+        self.assertContains(response, "Contact Information")
+        self.assertContains(response, "Posted Pets")
+        self.assertContains(response, self.shelter.address)
+        self.assertContains(response, self.shelter.city)
+        self.assertContains(response, f'href="mailto:{self.shelter.email}"')
+        self.assertContains(response, f'href="tel:{self.shelter.phone}"')
+        self.assertContains(response, self.pet.name)
+        self.assertContains(response, self.new_pet.name)
+        self.assertNotContains(response, archived_pet.name)
+        self.assertNotContains(response, "Edit Shelter")
 
     def test_standalone_browse_pets_url_is_removed(self):
         response = self.client.get("/browse-pets/")
@@ -391,10 +474,14 @@ class FrontendRenderTests(TestCase):
 
         self.assertContains(response, f'href="{reverse("available-pets")}"')
         self.assertContains(response, "Browse Pets")
+        self.assertContains(response, f'href="{reverse("message-list")}"')
+        self.assertContains(response, "Messages")
         self.assertContains(response, f'class="sidebar-card sidebar-card-link" href="{reverse("adopter-profile")}"')
         self.assertContains(response, "Adopter")
         self.assertNotContains(response, "Adopter Profile")
         sidebar_nav = re.search(r'<nav class="side-nav">.*?</nav>', response.content.decode(), flags=re.S).group(0)
+        self.assertNotIn(reverse("shelter-list"), sidebar_nav)
+        self.assertNotIn("Shelters", sidebar_nav)
         self.assertNotIn(reverse("nearby-shelters"), sidebar_nav)
         self.assertNotIn("Nearby Shelters", sidebar_nav)
 
@@ -404,6 +491,125 @@ class FrontendRenderTests(TestCase):
         response = self.client.get(reverse("pet-list"))
 
         self.assertNotContains(response, f'href="{reverse("available-pets")}"')
+        self.assertContains(response, f'href="{reverse("staff-pet-list")}"')
+        self.assertContains(response, "Manage Pets")
+        self.assertContains(response, f'href="{reverse("message-list")}"')
+        self.assertContains(response, "Messages")
+        sidebar_nav = re.search(r'<nav class="side-nav">.*?</nav>', response.content.decode(), flags=re.S).group(0)
+        self.assertNotIn(reverse("shelter-list"), sidebar_nav)
+        self.assertNotIn("Shelters", sidebar_nav)
+
+    def test_staff_sidebar_profile_card_links_to_shelter_profile(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("pet-list"))
+
+        self.assertContains(
+            response,
+            f'class="sidebar-card sidebar-card-link" href="{self.shelter.get_absolute_url()}" aria-label="Open {self.shelter.name} shelter profile"',
+        )
+        self.assertContains(response, self.shelter.name)
+
+    def test_staff_dashboard_prioritizes_work_queues(self):
+        pending_pet = Pet.objects.create(
+            name="Pending Pup",
+            species=Pet.Species.DOG,
+            breed="Mixed",
+            age=4,
+            description="Waiting on final adoption steps.",
+            shelter=self.shelter,
+            posted_by=self.staff,
+            status=Pet.Status.PENDING,
+        )
+        message = ConversationMessage.objects.create(
+            application=self.application,
+            sender=self.adopter,
+            body="Can we schedule a shelter visit?",
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("pet-list"))
+        content = response.content.decode()
+
+        self.assertContains(response, 'class="staff-work-overview"')
+        self.assertContains(response, "New Applications")
+        self.assertContains(response, "Pets Currently Available")
+        self.assertContains(response, "Pets Pending Adoption")
+        self.assertContains(response, "Unread Messages")
+        self.assertContains(response, "Shelter Profile Completeness")
+        self.assertContains(response, self.application.pet.name)
+        self.assertContains(response, self.new_pet.name)
+        self.assertContains(response, pending_pet.name)
+        self.assertContains(response, "<strong>1</strong> application", html=False)
+        self.assertContains(response, "Updated")
+        self.assertContains(response, 'name="status" value="available"')
+        self.assertContains(response, 'name="status" value="pending"')
+        self.assertContains(response, 'name="status" value="adopted"')
+        self.assertContains(response, 'name="action" value="archive"')
+        self.assertContains(response, "Can we schedule a shelter visit?")
+        self.assertNotContains(response, "Shelter listing")
+        self.assertLess(content.index("New Applications"), content.index("Pets Currently Available"))
+        self.assertLess(content.index("Pets Currently Available"), content.index("Pets Pending Adoption"))
+        self.assertLess(content.index("Pets Pending Adoption"), content.index("Unread Messages"))
+        self.assertLess(content.index("Unread Messages"), content.index("Shelter Profile Completeness"))
+
+        self.client.get(f'{reverse("message-list")}?thread={self.application.pk}')
+        message.refresh_from_db()
+        self.assertIsNotNone(message.read_at)
+
+    def test_staff_can_archive_pet_and_status_update_restores_it(self):
+        self.client.force_login(self.staff)
+
+        archive_response = self.client.post(
+            reverse("pet-state", args=[self.new_pet.pk]),
+            {"action": "archive", "next": reverse("pet-list")},
+        )
+
+        self.assertRedirects(archive_response, reverse("pet-list"))
+        self.new_pet.refresh_from_db()
+        self.assertTrue(self.new_pet.is_archived)
+        self.assertIsNotNone(self.new_pet.archived_at)
+
+        self.client.logout()
+        public_response = self.client.get(reverse("available-pets"))
+        self.assertNotContains(public_response, self.new_pet.name)
+
+        self.client.force_login(self.staff)
+        status_response = self.client.post(
+            reverse("pet-state", args=[self.new_pet.pk]),
+            {"status": Pet.Status.ADOPTED, "next": self.new_pet.get_absolute_url()},
+        )
+
+        self.assertRedirects(status_response, self.new_pet.get_absolute_url())
+        self.new_pet.refresh_from_db()
+        self.assertFalse(self.new_pet.is_archived)
+        self.assertIsNone(self.new_pet.archived_at)
+        self.assertEqual(self.new_pet.status, Pet.Status.ADOPTED)
+
+    def test_staff_manage_pets_page_has_pet_workflow_controls(self):
+        ConversationMessage.objects.create(
+            application=self.application,
+            sender=self.adopter,
+            body="Can we meet Milo?",
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("staff-pet-list"))
+
+        self.assertContains(response, "Manage Pets")
+        self.assertContains(response, f'href="{reverse("pet-create")}"')
+        self.assertContains(response, self.pet.name)
+        self.assertContains(response, self.new_pet.name)
+        self.assertContains(response, f'href="{reverse("pet-update", args=[self.pet.pk])}"')
+        self.assertContains(response, "<strong>1</strong> application", html=False)
+        self.assertContains(response, "Updated")
+        self.assertContains(response, 'name="status" value="available"')
+        self.assertContains(response, 'name="status" value="pending"')
+        self.assertContains(response, 'name="status" value="adopted"')
+        self.assertContains(response, 'name="action" value="archive"')
+
+        filtered_response = self.client.get(f'{reverse("staff-pet-list")}?status=available')
+        self.assertContains(filtered_response, self.new_pet.name)
 
     def test_adopter_dashboard_quick_actions_are_removed(self):
         self.client.force_login(self.adopter)
@@ -660,10 +866,10 @@ class FrontendRenderTests(TestCase):
 
         self.assertContains(response, "Submitted")
         self.assertContains(response, "Under Review")
-        self.assertContains(response, "Shelter Contacted You")
         self.assertContains(response, "Approved / Declined")
         self.assertContains(response, "Completed")
-        self.assertContains(response, "Message received")
+        self.assertNotContains(response, "Shelter Contacted You")
+        self.assertNotContains(response, "Message received")
         self.assertContains(response, "Please visit the shelter this weekend.")
         self.assertContains(response, "Shelter Staff")
 
@@ -692,6 +898,174 @@ class FrontendRenderTests(TestCase):
         self.assertContains(response, "View Tracker")
         self.assertNotContains(response, "View Status")
 
+    def test_staff_application_queue_has_filters_without_message_buttons(self):
+        second_application = AdoptionApplication.objects.create(
+            pet=self.new_pet,
+            applicant=self.adopter,
+            home_type="Townhouse",
+            has_yard=False,
+            experience="Quiet home with previous cat experience.",
+            reason="Luna matches our household.",
+            status=AdoptionApplication.Status.APPROVED,
+        )
+        ConversationMessage.objects.create(
+            application=second_application,
+            sender=self.adopter,
+            body="I can visit tomorrow.",
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("application-list"))
+
+        self.assertContains(response, "Application Queue")
+        self.assertContains(response, "application-queue-filters")
+        self.assertContains(response, 'name="pet"')
+        self.assertContains(response, 'name="status"')
+        self.assertContains(response, 'name="sort"')
+        self.assertContains(response, "Newest first")
+        self.assertContains(response, "Oldest first")
+        self.assertContains(response, "Manage Pets")
+        self.assertNotContains(response, 'name="unread"')
+        self.assertNotContains(response, "Unread first")
+        self.assertNotContains(response, "1 unread")
+        self.assertNotContains(response, "Adopter Messages")
+        application_cards = response.content.decode().split('<div class="application-card-list">', 1)[1]
+        self.assertNotIn('href="' + reverse("message-list"), application_cards)
+        self.assertNotIn(">Messages<", application_cards)
+
+        pet_response = self.client.get(f'{reverse("application-list")}?pet={self.pet.pk}')
+        pet_cards = pet_response.content.decode().split('<div class="application-card-list">', 1)[1]
+        self.assertIn(self.pet.name, pet_cards)
+        self.assertNotIn(self.new_pet.name, pet_cards)
+
+        status_response = self.client.get(f'{reverse("application-list")}?status=approved')
+        status_cards = status_response.content.decode().split('<div class="application-card-list">', 1)[1]
+        self.assertIn(self.new_pet.name, status_cards)
+        self.assertNotIn(self.pet.name, status_cards)
+
+    def test_staff_application_detail_shows_review_sections(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.get(self.application.get_absolute_url())
+
+        self.assertContains(response, "Applicant Info")
+        self.assertContains(response, "Home Details")
+        self.assertContains(response, "Reason for Adoption")
+        self.assertContains(response, "Status Controls")
+        self.assertContains(response, self.adopter.email)
+        self.assertContains(response, "Request More Info")
+        self.assertContains(response, "Approve")
+        self.assertContains(response, "Decline")
+        self.assertContains(response, "Mark Adoption Completed")
+        self.assertContains(response, "Set detailed status")
+        self.assertContains(response, "staff-application-layout")
+        self.assertNotContains(response, f'href="{reverse("message-list")}?thread={self.application.pk}"')
+        self.assertNotContains(response, "Messages / Questions")
+        self.assertNotContains(response, "Message Thread")
+
+    def test_staff_decision_actions_update_application_and_pet_status(self):
+        self.client.force_login(self.staff)
+
+        response = self.client.post(
+            self.application.get_absolute_url(),
+            {"status": AdoptionApplication.Status.REVIEWING},
+        )
+        self.assertRedirects(response, self.application.get_absolute_url())
+        self.application.refresh_from_db()
+        self.pet.refresh_from_db()
+        self.assertEqual(self.application.status, AdoptionApplication.Status.REVIEWING)
+        self.assertEqual(self.pet.status, Pet.Status.PENDING)
+
+        response = self.client.post(
+            self.application.get_absolute_url(),
+            {"status": AdoptionApplication.Status.DECLINED},
+        )
+        self.assertRedirects(response, self.application.get_absolute_url())
+        self.application.refresh_from_db()
+        self.pet.refresh_from_db()
+        self.assertEqual(self.application.status, AdoptionApplication.Status.DECLINED)
+        self.assertEqual(self.pet.status, Pet.Status.AVAILABLE)
+
+        response = self.client.post(
+            self.application.get_absolute_url(),
+            {"status": AdoptionApplication.Status.APPROVED},
+        )
+        self.assertRedirects(response, self.application.get_absolute_url())
+        self.application.refresh_from_db()
+        self.pet.refresh_from_db()
+        self.assertEqual(self.application.status, AdoptionApplication.Status.APPROVED)
+        self.assertEqual(self.pet.status, Pet.Status.PENDING)
+
+        response = self.client.post(
+            self.application.get_absolute_url(),
+            {"status": AdoptionApplication.Status.COMPLETED},
+        )
+        self.assertRedirects(response, self.application.get_absolute_url())
+        self.application.refresh_from_db()
+        self.pet.refresh_from_db()
+        self.assertEqual(self.application.status, AdoptionApplication.Status.COMPLETED)
+        self.assertEqual(self.pet.status, Pet.Status.ADOPTED)
+
+    def test_adopter_messages_page_links_conversations_to_tracker(self):
+        message = ConversationMessage.objects.create(
+            application=self.application,
+            sender=self.staff,
+            body="Please visit the shelter this weekend.",
+        )
+        self.client.force_login(self.adopter)
+
+        response = self.client.get(reverse("message-list"))
+
+        self.assertContains(response, "Shelter Messages")
+        self.assertContains(response, "Conversation Inbox")
+        self.assertContains(response, "message-inbox-layout")
+        self.assertContains(response, "data-message-inbox")
+        self.assertContains(response, "history.pushState")
+        self.assertContains(response, "message-thread-sidebar")
+        self.assertContains(response, "Select a conversation")
+        self.assertContains(response, "1 unread")
+        self.assertContains(response, "Please visit the shelter this weekend.")
+        self.assertContains(response, '<a class="message-thread-card')
+        self.assertContains(response, f'{reverse("message-list")}?thread={self.application.pk}')
+        self.assertContains(response, f'{reverse("message-list")}?thread={self.application.pk}#message-inbox')
+        self.assertContains(response, "Open Conversation")
+
+        detail_response = self.client.get(f'{reverse("message-list")}?thread={self.application.pk}')
+        self.assertContains(detail_response, "selected-thread-summary")
+        self.assertContains(detail_response, "Questions with")
+        self.assertContains(detail_response, "Please visit the shelter this weekend.")
+        message.refresh_from_db()
+        self.assertIsNotNone(message.read_at)
+
+    def test_staff_messages_page_prioritizes_adopter_replies(self):
+        ConversationMessage.objects.create(
+            application=self.application,
+            sender=self.adopter,
+            body="Can we schedule a shelter visit?",
+        )
+        self.client.force_login(self.staff)
+
+        response = self.client.get(reverse("message-list"))
+
+        self.assertContains(response, "Adopter Messages")
+        self.assertContains(response, "message-inbox-layout")
+        self.assertContains(response, "message-thread-sidebar")
+        self.assertContains(response, "1 unread")
+        self.assertContains(response, "Can we schedule a shelter visit?")
+        self.assertContains(response, self.adopter.username)
+        self.assertContains(response, '<a class="message-thread-card')
+        self.assertContains(response, f'{reverse("message-list")}?thread={self.application.pk}')
+        self.assertContains(response, f'{reverse("message-list")}?thread={self.application.pk}#message-inbox')
+        self.assertContains(response, "Open Conversation")
+
+        unread_response = self.client.get(f'{reverse("message-list")}?filter=unread')
+        self.assertContains(unread_response, self.pet.name)
+
+        thread_response = self.client.get(f'{reverse("message-list")}?thread={self.application.pk}')
+        self.assertContains(thread_response, "selected-thread-summary")
+        self.assertContains(thread_response, "Questions with")
+        self.assertContains(thread_response, "Can we schedule a shelter visit?")
+
     def test_action_pages_use_consistent_back_link(self):
         self.client.force_login(self.adopter)
         adopter_pages = [
@@ -708,7 +1082,7 @@ class FrontendRenderTests(TestCase):
 
         self.client.force_login(self.staff)
         staff_pages = [
-            (reverse("pet-create"), "Back to Dashboard"),
+            (reverse("pet-create"), "Back to Manage Pets"),
             (self.shelter.get_absolute_url(), "Back to Shelters"),
         ]
         for url, label in staff_pages:
@@ -726,6 +1100,7 @@ class FrontendRenderTests(TestCase):
             reverse("application-create", args=[self.new_pet.pk]),
             self.application.get_absolute_url(),
             reverse("application-list"),
+            reverse("message-list"),
         ]
         for url in urls:
             with self.subTest(url=url):
@@ -736,10 +1111,12 @@ class FrontendRenderTests(TestCase):
         self.client.force_login(self.staff)
         urls = [
             reverse("pet-list"),
+            reverse("staff-pet-list"),
             reverse("pet-create"),
             self.shelter.get_absolute_url(),
             self.application.get_absolute_url(),
             reverse("application-list"),
+            reverse("message-list"),
         ]
         for url in urls:
             with self.subTest(url=url):
