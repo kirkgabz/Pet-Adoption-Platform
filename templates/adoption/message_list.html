@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<section class="message-list-page">
+  <header class="application-list-hero message-list-hero">
+    <div>
+      <p class="eyebrow">Messages</p>
+      <h1>{% if user.is_staff %}Adopter Messages{% else %}Shelter Messages{% endif %}</h1>
+      <p>{% if user.is_staff %}Use this inbox for adopter questions, shelter replies, and follow-up messages.{% else %}Ask questions, answer shelter follow-ups, and keep conversation separate from your application status.{% endif %}</p>
+    </div>
+    <a class="button primary" href="{% url 'application-list' %}">View Applications</a>
+  </header>
+
+  <section class="application-summary-grid message-summary-grid" aria-label="Message summary">
+    <div>
+      <strong>{{ message_summary.conversations }}</strong>
+      <span>Conversations</span>
+    </div>
+    <div>
+      <strong>{{ message_summary.unread }}</strong>
+      <span>Unread</span>
+    </div>
+    <div>
+      <strong>{{ message_summary.messages }}</strong>
+      <span>Total Messages</span>
+    </div>
+    <div>
+      <strong>{{ message_summary.active }}</strong>
+      <span>Active Applications</span>
+    </div>
+  </section>
+
+  <div class="message-list-toolbar">
+    <div>
+      <h2>Conversation Inbox</h2>
+      <p>{% if user.is_staff %}Unread adopter questions are shown first so follow-up work stays easy to scan.{% else %}Questions and replies are grouped by pet, so each conversation stays connected to the right application.{% endif %}</p>
+    </div>
+    <nav class="message-filter-tabs" aria-label="Message filters">
+      <a href="{% url 'message-list' %}" {% if message_filter == "all" %}class="active"{% endif %}>All</a>
+      <a href="{% url 'message-list' %}?filter=unread" {% if message_filter == "unread" %}class="active"{% endif %}>Unread</a>
+    </nav>
+  </div>
+
+  <div id="message-inbox" class="message-inbox-layout" data-message-inbox>
+    <aside class="message-thread-sidebar">
+      <div class="message-thread-sidebar-header">
+        <div>
+          <p class="eyebrow">Inbox</p>
+          <h2>Conversations</h2>
+        </div>
+        <span>{{ page_obj.paginator.count }} shown</span>
+      </div>
+      <div class="message-thread-list">
+        {% for application in threads %}
+          <a class="message-thread-card {% if application.unread_count %}unread{% endif %}{% if selected_thread.pk == application.pk %} selected{% endif %}" href="{% url 'message-list' %}?thread={{ application.pk }}#message-inbox" aria-label="Open conversation for {{ application.pet.name }}">
+            <span class="message-thread-media">
+              {% if application.pet.photo %}
+                <img src="{{ application.pet.photo.url }}" alt="{{ application.pet.name }}">
+              {% else %}
+                <span>{{ application.pet.name|first|upper }}</span>
+              {% endif %}
+            </span>
+
+            <div class="message-thread-body">
+              <div class="message-thread-title">
+                <div>
+                  <p class="eyebrow">{{ application.pet.get_species_display }}</p>
+                  <h2>{{ application.pet.name }}</h2>
+                </div>
+                <div class="message-thread-badges">
+                  {% if application.unread_count %}
+                    <span class="unread-pill">{{ application.unread_count }} unread</span>
+                  {% endif %}
+                  <span class="status">{{ application.get_status_display }}</span>
+                </div>
+              </div>
+
+              <div class="message-thread-meta">
+                <span>{% if user.is_staff %}Applicant{% else %}Shelter{% endif %}</span>
+                <strong>{% if user.is_staff %}{{ application.applicant.get_full_name|default:application.applicant.username }}{% else %}{{ application.pet.shelter.name }}{% endif %}</strong>
+                <small>{{ application.created_at|date:"M j" }} &middot; {{ application.message_count }} message{% if application.message_count != 1 %}s{% endif %} &middot; {{ application.pet.get_status_display }}</small>
+              </div>
+
+              {% with latest_message=application.latest_messages.0 %}
+                <div class="message-thread-preview">
+                  {% if latest_message %}
+                    <strong>{% if latest_message.sender == user %}You{% elif latest_message.sender.is_staff %}Shelter Staff{% else %}{{ latest_message.sender.username }}{% endif %}</strong>
+                    <p>{{ latest_message.body|truncatechars:90 }}</p>
+                  {% else %}
+                    <strong>No messages yet</strong>
+                    <p>{% if user.is_staff %}Open the conversation to send a follow-up.{% else %}Open the conversation to ask a question.{% endif %}</p>
+                  {% endif %}
+                </div>
+              {% endwith %}
+
+              <div class="message-thread-footer">
+                <span class="message-thread-open">Open Conversation</span>
+              </div>
+            </div>
+          </a>
+        {% empty %}
+          <section class="empty-state message-empty-state">
+            <p class="empty-icon">0</p>
+            <h2>No conversations yet</h2>
+            <p>{% if user.is_staff %}Conversations will appear after adopters apply or send messages on applications.{% else %}Apply for a pet to start a conversation with a shelter.{% endif %}</p>
+            <a class="button primary" href="{% if user.is_staff %}{% url 'staff-pet-list' %}{% else %}{% url 'available-pets' %}{% endif %}">{% if user.is_staff %}Manage Pets{% else %}Browse Pets{% endif %}</a>
+          </section>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <section class="panel messages-panel message-tab-thread">
+      {% if selected_thread %}
+        <div class="panel-title message-thread-panel-title">
+          <div>
+            <p class="eyebrow">Messages</p>
+            <h2>{% if user.is_staff %}Questions with {{ selected_thread.applicant.username }}{% else %}Questions with {{ selected_thread.pet.shelter.name }}{% endif %}</h2>
+          </div>
+          <span class="status">{{ selected_thread.get_status_display }}</span>
+        </div>
+        <div class="selected-thread-summary">
+          <div><span>Pet</span><strong>{{ selected_thread.pet.name }}</strong></div>
+          <div><span>{% if user.is_staff %}Applicant{% else %}Shelter{% endif %}</span><strong>{% if user.is_staff %}{{ selected_thread.applicant.get_full_name|default:selected_thread.applicant.username }}{% else %}{{ selected_thread.pet.shelter.name }}{% endif %}</strong></div>
+          <div><span>Pet Status</span><strong>{{ selected_thread.pet.get_status_display }}</strong></div>
+        </div>
+        <div class="messages">
+          {% for message in selected_conversation %}
+            <div class="message {% if message.sender == user %}mine{% endif %}">
+              <strong>{% if message.sender == user %}You{% elif message.sender.is_staff %}Shelter Staff{% else %}{{ message.sender.username }}{% endif %}</strong>
+              <p>{{ message.body|linebreaksbr }}</p>
+              <small>{{ message.created_at|date:"M j, Y g:i A" }}</small>
+            </div>
+          {% empty %}
+            <div class="empty-message">No messages yet.</div>
+          {% endfor %}
+        </div>
+        <form class="message-composer" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="thread" value="{{ selected_thread.pk }}">
+          {{ message_form.body }}
+          {{ message_form.body.errors }}
+          <button class="primary">Send Message</button>
+        </form>
+      {% else %}
+        <section class="empty-state message-empty-state message-select-empty">
+          <p class="empty-icon">M</p>
+          <h2>Select a conversation</h2>
+          <p>Choose a thread from the inbox to read questions, replies, and follow-ups.</p>
+        </section>
+      {% endif %}
+    </section>
+  </div>
+
+  {% include "adoption/partials/pagination.html" %}
+</section>
+{% endblock %}
+{% block extra_js %}
+<script>
+  (function() {
+    const inbox = document.querySelector("[data-message-inbox]");
+    if (!inbox || !window.fetch || !window.DOMParser) return;
+
+    function replaceFromDocument(doc, selector) {
+      const current = document.querySelector(selector);
+      const next = doc.querySelector(selector);
+      if (current && next) current.innerHTML = next.innerHTML;
+    }
+
+    async function loadThread(url) {
+      const mainStage = document.querySelector(".main-stage");
+      const threadList = document.querySelector(".message-thread-list");
+      const pageScrollTop = mainStage ? mainStage.scrollTop : window.scrollY;
+      const listScrollTop = threadList ? threadList.scrollTop : 0;
+      const requestUrl = new URL(url, window.location.href);
+      requestUrl.hash = "";
+
+      const response = await fetch(requestUrl.toString(), {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!response.ok) throw new Error("Could not load conversation.");
+
+      const html = await response.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      replaceFromDocument(doc, ".message-summary-grid");
+      replaceFromDocument(doc, ".message-thread-list");
+      replaceFromDocument(doc, ".message-tab-thread");
+
+      const nextUrl = new URL(url, window.location.href);
+      nextUrl.hash = "";
+      window.history.pushState({ messageThread: true }, "", nextUrl.toString());
+
+      const nextThreadList = document.querySelector(".message-thread-list");
+      if (nextThreadList) nextThreadList.scrollTop = listScrollTop;
+      if (mainStage) {
+        mainStage.scrollTop = pageScrollTop;
+      } else {
+        window.scrollTo(window.scrollX, pageScrollTop);
+      }
+    }
+
+    document.addEventListener("click", function(event) {
+      const link = event.target.closest(".message-thread-card");
+      if (!link) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+
+      event.preventDefault();
+      loadThread(link.href).catch(function() {
+        window.location.href = link.href;
+      });
+    });
+  })();
+</script>
+{% endblock %}

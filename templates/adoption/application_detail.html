@@ -2,8 +2,7 @@
 {% block title %}Application{% endblock %}
 {% block content %}
 <section class="application-detail-page">
-  {% url 'application-list' as application_back_url %}
-  {% include "adoption/partials/back_link.html" with back_url=application_back_url back_label="Back to Applications" %}
+  {% include "adoption/partials/back_link.html" with back_url=application_back_url back_label=application_back_label %}
   <div class="panel application-status-panel">
     <div class="split">
       <div>
@@ -21,10 +20,6 @@
         <strong>Under Review</strong>
         <span>{% if under_review_active %}Shelter is reviewing{% else %}Waiting for review{% endif %}</span>
       </li>
-      <li class="{% if shelter_has_contacted %}active{% endif %}">
-        <strong>Shelter Contacted You</strong>
-        <span>{% if shelter_has_contacted %}Message received{% else %}Waiting for shelter message{% endif %}</span>
-      </li>
       <li class="{% if decision_active %}active{% endif %}{% if application.status == 'declined' %} declined{% endif %}">
         <strong>Approved / Declined</strong>
         <span>{{ decision_text }}</span>
@@ -36,7 +31,7 @@
     </ol>
   </div>
 
-  <div class="application-layout">
+  <div class="application-layout {% if user.is_staff %}staff-application-layout{% endif %}">
     <section class="panel application-review-card">
       <div class="application-preview-summary">
         <div class="mini-avatar">{{ application.pet.name|first|upper }}</div>
@@ -46,36 +41,53 @@
         </div>
       </div>
 
+      <section class="detail-section application-review-section">
+        <h2>Applicant Info</h2>
+        <div class="application-info-grid">
+          <div><span>Applicant</span><strong>{{ application.applicant.get_full_name|default:application.applicant.username }}</strong></div>
+          <div><span>Email</span><strong>{{ application.applicant.email|default:"Not listed" }}</strong></div>
+          <div><span>Submitted</span><strong>{{ application.created_at|date:"M j, Y" }}</strong></div>
+          <div><span>Status</span><strong>{{ application.get_status_display }}</strong></div>
+        </div>
+      </section>
+
       <div class="application-info-grid">
-        <div><span>Applicant</span><strong>{{ application.applicant.get_full_name|default:application.applicant.username }}</strong></div>
         <div><span>Home</span><strong>{{ application.home_type }}{% if application.has_yard %}, has yard{% endif %}</strong></div>
-        <div><span>Submitted</span><strong>{{ application.created_at|date:"M j, Y" }}</strong></div>
+        <div><span>Yard</span><strong>{% if application.has_yard %}Yes{% else %}No{% endif %}</strong></div>
+        <div><span>Pet</span><strong>{{ application.pet.name }}</strong></div>
+        <div><span>Shelter</span><strong>{{ application.pet.shelter.name }}</strong></div>
       </div>
 
       <section class="detail-section">
-        <h2>Experience</h2>
+        <h2>Home Details</h2>
         <p>{{ application.experience|linebreaksbr }}</p>
       </section>
       <section class="detail-section">
-        <h2>Why this pet?</h2>
+        <h2>Reason for Adoption</h2>
         <p>{{ application.reason|linebreaksbr }}</p>
       </section>
 
       {% if user.is_staff %}
-        <form class="review-actions" method="post">
-          {% csrf_token %}
-          <button class="primary" name="status" value="approved">Approve</button>
-          <button class="button" name="status" value="reviewing">Mark Under Review</button>
-          <button class="danger" name="status" value="declined">Decline</button>
-        </form>
-        <form class="status-select-form" method="post">
-          {% csrf_token %}
-          <label class="filter-control">
-            <span>Set detailed status</span>
-            {{ status_form.status }}
-          </label>
-          <button>Update Status</button>
-        </form>
+        <section class="detail-section status-controls-section">
+          <h2>Status Controls</h2>
+          <form class="review-actions" method="post">
+            {% csrf_token %}
+            {% if application_back_source %}<input type="hidden" name="from" value="{{ application_back_source }}">{% endif %}
+            <button class="button" name="status" value="reviewing">Request More Info</button>
+            <button class="primary" name="status" value="approved">Approve</button>
+            <button class="danger" name="status" value="declined">Decline</button>
+            <button class="primary" name="status" value="completed">Mark Adoption Completed</button>
+          </form>
+          <form class="status-select-form" method="post">
+            {% csrf_token %}
+            {% if application_back_source %}<input type="hidden" name="from" value="{{ application_back_source }}">{% endif %}
+            <label class="filter-control">
+              <span>Set detailed status</span>
+              {{ status_form.status }}
+            </label>
+            <button>Update Status</button>
+          </form>
+        </section>
       {% endif %}
 
       <div class="actions">
@@ -83,31 +95,34 @@
       </div>
     </section>
 
-    <section class="panel messages-panel">
-      <div class="panel-title">
-        <div>
-          <p class="eyebrow">Messages</p>
-          <h2>{% if user.is_staff %}Conversation with {{ application.applicant.username }}{% else %}Conversation with {{ application.pet.shelter.name }}{% endif %}</h2>
-        </div>
-      </div>
-      <div class="messages">
-        {% for message in conversation %}
-          <div class="message {% if message.sender == user %}mine{% endif %}">
-            <strong>{% if message.sender == user %}You{% elif message.sender.is_staff %}Shelter Staff{% else %}{{ message.sender.username }}{% endif %}</strong>
-            <p>{{ message.body|linebreaksbr }}</p>
-            <small>{{ message.created_at|date:"M j, Y g:i A" }}</small>
+    {% if not user.is_staff %}
+      <section class="panel messages-panel">
+        <div class="panel-title">
+          <div>
+            <p class="eyebrow">Messages</p>
+            <h2>Questions with {{ application.pet.shelter.name }}</h2>
           </div>
-        {% empty %}
-          <div class="empty-message">{% if user.is_staff %}No messages yet. Start the conversation with a helpful update.{% else %}No messages yet. Shelter staff messages will appear here with your application updates.{% endif %}</div>
-        {% endfor %}
-      </div>
-      <form class="message-composer" method="post">
-        {% csrf_token %}
-        {{ message_form.body }}
-        {{ message_form.body.errors }}
-        <button class="primary">Send Message</button>
-      </form>
-    </section>
+        </div>
+        <div class="messages">
+          {% for message in conversation %}
+            <div class="message {% if message.sender == user %}mine{% endif %}">
+              <strong>{% if message.sender == user %}You{% elif message.sender.is_staff %}Shelter Staff{% else %}{{ message.sender.username }}{% endif %}</strong>
+              <p>{{ message.body|linebreaksbr }}</p>
+              <small>{{ message.created_at|date:"M j, Y g:i A" }}</small>
+            </div>
+          {% empty %}
+            <div class="empty-message">No questions or follow-ups yet.</div>
+          {% endfor %}
+        </div>
+        <form class="message-composer" method="post">
+          {% csrf_token %}
+          {% if application_back_source %}<input type="hidden" name="from" value="{{ application_back_source }}">{% endif %}
+          {{ message_form.body }}
+          {{ message_form.body.errors }}
+          <button class="primary">Send Message</button>
+        </form>
+      </section>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

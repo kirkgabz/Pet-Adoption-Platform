@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Manage Pets{% endblock %}
+{% block content %}
+<section class="staff-management-page">
+  <header class="staff-management-header">
+    <div>
+      <p class="eyebrow">Pet Management</p>
+      <h1>Manage Pets</h1>
+      <p>Keep every pet listing current, from new intake to adoption completion.</p>
+    </div>
+    <a class="button primary" href="{% url 'pet-create' %}">New Pet</a>
+  </header>
+
+  <section class="staff-management-stats" aria-label="Pet management summary">
+    <a href="{% url 'staff-pet-list' %}" class="staff-management-stat {% if selected_status == 'active' %}active{% endif %}">
+      <span>Active Pets</span>
+      <strong>{{ staff_pet_counts.active }}</strong>
+    </a>
+    <a href="{% url 'staff-pet-list' %}?status=available" class="staff-management-stat {% if selected_status == 'available' %}active{% endif %}">
+      <span>Available</span>
+      <strong>{{ staff_pet_counts.available }}</strong>
+    </a>
+    <a href="{% url 'staff-pet-list' %}?status=pending" class="staff-management-stat {% if selected_status == 'pending' %}active{% endif %}">
+      <span>Pending</span>
+      <strong>{{ staff_pet_counts.pending }}</strong>
+    </a>
+    <a href="{% url 'staff-pet-list' %}?status=adopted" class="staff-management-stat {% if selected_status == 'adopted' %}active{% endif %}">
+      <span>Adopted</span>
+      <strong>{{ staff_pet_counts.adopted }}</strong>
+    </a>
+    <a href="{% url 'staff-pet-list' %}?status=archived" class="staff-management-stat {% if selected_status == 'archived' %}active{% endif %}">
+      <span>Archived</span>
+      <strong>{{ staff_pet_counts.archived }}</strong>
+    </a>
+  </section>
+
+  <section class="panel-card staff-management-toolbar">
+    <form class="staff-pet-filters" method="get">
+      <label>
+        <span>Search</span>
+        <input type="search" name="q" value="{{ search_query }}" placeholder="Pet, breed, shelter, or city">
+      </label>
+      <label>
+        <span>Species</span>
+        <select name="species">
+          <option value="">All species</option>
+          {% for value, label in species_choices %}
+            <option value="{{ value }}" {% if selected_species == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        <span>Status</span>
+        <select name="status">
+          <option value="active" {% if selected_status == "active" %}selected{% endif %}>All active</option>
+          {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+          <option value="archived" {% if selected_status == "archived" %}selected{% endif %}>Archived</option>
+        </select>
+      </label>
+      <button class="primary" type="submit">Apply</button>
+      <a class="button" href="{% url 'staff-pet-list' %}">Clear</a>
+    </form>
+  </section>
+
+  <section class="staff-management-results">
+    <div class="panel-title">
+      <h2>Pet Listings</h2>
+      <span>{{ page_obj.paginator.count }} result{% if page_obj.paginator.count != 1 %}s{% endif %}</span>
+    </div>
+    <div class="staff-management-grid">
+      {% for pet in object_list %}
+        {% include "adoption/partials/staff_pet_card.html" with pet=pet %}
+      {% empty %}
+        <div class="empty-state staff-management-empty">
+          <h2>No pets found</h2>
+          <p>Try a different filter or create a new pet listing.</p>
+          <a class="button primary" href="{% url 'pet-create' %}">New Pet</a>
+        </div>
+      {% endfor %}
+    </div>
+    {% include "adoption/partials/pagination.html" %}
+  </section>
+</section>
+{% endblock %}

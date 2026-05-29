@@ -2,8 +2,8 @@
 {% block title %}{{ object.name }}{% endblock %}
 {% block content %}
 {% if user.is_staff %}
-  {% url 'pet-list' as pet_back_url %}
-  {% include "adoption/partials/back_link.html" with back_url=pet_back_url back_label="Back to Dashboard" %}
+  {% url 'staff-pet-list' as pet_back_url %}
+  {% include "adoption/partials/back_link.html" with back_url=pet_back_url back_label="Back to Manage Pets" %}
 {% else %}
   {% url 'available-pets' as pet_back_url %}
   {% include "adoption/partials/back_link.html" with back_url=pet_back_url back_label="Back to Browse Pets" %}
@@ -23,7 +23,7 @@
         <p class="eyebrow">Pet Profile</p>
         <h1>{{ object.name }}</h1>
       </div>
-      <span class="status">{{ object.get_status_display }}</span>
+      <span class="status">{% if object.is_archived %}Archived{% else %}{{ object.get_status_display }}{% endif %}</span>
     </div>
 
     <div class="pet-facts">
@@ -31,6 +31,8 @@
       <div><strong>{% if object.breed %}{{ object.breed }}{% else %}Mixed{% endif %}</strong><span>Breed</span></div>
       <div><strong>{{ object.age }}</strong><span>Years old</span></div>
       <div><strong>{{ object.shelter.city|default:"Listed" }}</strong><span>Location</span></div>
+      <div><strong>{{ object.application_count|default:0 }}</strong><span>Applications</span></div>
+      <div><strong>{{ object.updated_at|date:"M j, Y" }}</strong><span>Last updated</span></div>
     </div>
 
     <section class="detail-section">
@@ -72,8 +74,19 @@
       <a class="button" href="mailto:{{ object.shelter.email }}">Contact Shelter</a>
       <a class="button" href="{{ object.shelter.get_absolute_url }}">View Shelter</a>
       {% if can_manage_pet %}
+        <form class="pet-state-form detail-state-form" method="post" action="{% url 'pet-state' object.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" name="status" value="available" {% if object.status == "available" and not object.is_archived %}disabled{% endif %}>Available</button>
+          <button type="submit" name="status" value="pending" {% if object.status == "pending" and not object.is_archived %}disabled{% endif %}>Pending</button>
+          <button type="submit" name="status" value="adopted" {% if object.status == "adopted" and not object.is_archived %}disabled{% endif %}>Adopted</button>
+          {% if object.is_archived %}
+            <button type="submit" name="action" value="restore">Restore</button>
+          {% else %}
+            <button class="button danger" type="submit" name="action" value="archive">Archive</button>
+          {% endif %}
+        </form>
         <a class="button" href="{% url 'pet-update' object.pk %}">Edit Pet</a>
-        <a class="button danger" href="{% url 'pet-delete' object.pk %}">Delete</a>
       {% endif %}
     </div>
   </section>

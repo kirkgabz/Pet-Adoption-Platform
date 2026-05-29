@@ -1,0 +1,37 @@
+<article class="staff-pet-card">
+  <a class="staff-pet-card-main" href="{{ pet.get_absolute_url }}">
+    <span class="staff-pet-card-media">
+      {% if pet.photo %}
+        <img src="{{ pet.photo.url }}" alt="{{ pet.name }}" data-species="{{ pet.species }}" class="pet-image">
+      {% else %}
+        <span>{{ pet.name|first|upper }}</span>
+      {% endif %}
+    </span>
+    <span class="staff-pet-card-copy">
+      <strong>{{ pet.name }}</strong>
+      <small>{{ pet.get_species_display }}{% if pet.breed %} / {{ pet.breed }}{% endif %} / {{ pet.shelter.city|default:pet.shelter.name }}</small>
+    </span>
+    <em>{% if pet.is_archived %}Archived{% else %}{{ pet.get_status_display }}{% endif %}</em>
+  </a>
+
+  <div class="staff-pet-card-meta">
+    <span><strong>{{ pet.application_count|default:0 }}</strong> application{% if pet.application_count != 1 %}s{% endif %}</span>
+    <span>Updated {{ pet.updated_at|date:"M j, Y" }}</span>
+  </div>
+
+  <div class="staff-pet-card-actions">
+    <a class="button" href="{% url 'pet-update' pet.pk %}">Edit</a>
+    <form class="pet-state-form" method="post" action="{% url 'pet-state' pet.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button type="submit" name="status" value="available" {% if pet.status == "available" and not pet.is_archived %}disabled{% endif %}>Available</button>
+      <button type="submit" name="status" value="pending" {% if pet.status == "pending" and not pet.is_archived %}disabled{% endif %}>Pending</button>
+      <button type="submit" name="status" value="adopted" {% if pet.status == "adopted" and not pet.is_archived %}disabled{% endif %}>Adopted</button>
+      {% if pet.is_archived %}
+        <button type="submit" name="action" value="restore">Restore</button>
+      {% else %}
+        <button class="button danger" type="submit" name="action" value="archive">Archive</button>
+      {% endif %}
+    </form>
+  </div>
+</article>

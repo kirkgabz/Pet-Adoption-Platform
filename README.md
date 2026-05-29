@@ -24,6 +24,33 @@ Open `http://127.0.0.1:8000/`.
 
 Uploaded pet images are stored in `media/pets/` during local development.
 
+## Seed Demo Data
+
+Create realistic local data for testing both adopter and shelter staff flows:
+
+```powershell
+python manage.py migrate
+python manage.py seed_data
+```
+
+Useful demo logins all use `password123`:
+
+```text
+admin / password123
+staff_paws / password123
+staff_caws / password123
+adopter_chris / password123
+adopter_maya / password123
+```
+
+The seeder creates shelters, staff accounts, adopter profiles, pets with
+different statuses, favorites, applications, unread messages, and archived pet
+data. To rebuild a clean demo database, run:
+
+```powershell
+python manage.py seed_data --reset
+```
+
 ## Google Login
 
 Google OAuth is wired through django-allauth. To enable the button locally, copy

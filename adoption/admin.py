@@ -16,8 +16,8 @@ class PersonalityTagAdmin(admin.ModelAdmin):
 
 @admin.register(Pet)
 class PetAdmin(admin.ModelAdmin):
-    list_display = ("name", "species", "shelter", "status", "created_at")
-    list_filter = ("species", "status", "personality_tags")
+    list_display = ("name", "species", "shelter", "status", "is_archived", "created_at")
+    list_filter = ("species", "status", "is_archived", "personality_tags")
     search_fields = ("name", "breed", "description")
     filter_horizontal = ("personality_tags",)
 

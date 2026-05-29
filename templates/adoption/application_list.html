@@ -6,9 +6,9 @@
     <div>
       <p class="eyebrow">{% if user.is_staff %}Shelter Review{% else %}Adoption Status{% endif %}</p>
       <h1>{% if user.is_staff %}Adoption Applications{% else %}My Applications{% endif %}</h1>
-      <p>{% if user.is_staff %}Review adopter requests, move applications through each stage, and keep conversations in one place.{% else %}Track each adoption request, see shelter replies, and continue every conversation from one focused page.{% endif %}</p>
+      <p>{% if user.is_staff %}Review adopter requests and move applications through each adoption stage.{% else %}Track each adoption request, see shelter replies, and continue every conversation from one focused page.{% endif %}</p>
     </div>
-    <a class="button primary" href="{% if user.is_staff %}{% url 'pet-list' %}{% else %}{% url 'available-pets' %}{% endif %}">
+    <a class="button primary" href="{% if user.is_staff %}{% url 'staff-pet-list' %}{% else %}{% url 'available-pets' %}{% endif %}">
       {% if user.is_staff %}Manage Pets{% else %}Browse Pets{% endif %}
     </a>
   </header>
@@ -22,23 +22,68 @@
       <strong>{{ application_summary.active }}</strong>
       <span>Active</span>
     </div>
-    <div>
-      <strong>{{ application_summary.messages }}</strong>
-      <span>{% if user.is_staff %}Adopter Messages{% else %}Shelter Messages{% endif %}</span>
-    </div>
-    <div>
-      <strong>{{ application_summary.approved|add:application_summary.completed }}</strong>
-      <span>Approved / Completed</span>
-    </div>
+    {% if user.is_staff %}
+      <div>
+        <strong>{{ application_summary.approved }}</strong>
+        <span>Approved</span>
+      </div>
+      <div>
+        <strong>{{ application_summary.completed }}</strong>
+        <span>Completed</span>
+      </div>
+    {% else %}
+      <div>
+        <strong>{{ application_summary.messages }}</strong>
+        <span>Shelter Messages</span>
+      </div>
+      <div>
+        <strong>{{ application_summary.approved|add:application_summary.completed }}</strong>
+        <span>Approved / Completed</span>
+      </div>
+    {% endif %}
   </section>
 
   <div class="application-list-toolbar">
     <div>
-      <h2>Application Tracker</h2>
-      <p>{% if user.is_staff %}Open a request to update its status or reply to the adopter.{% else %}Open a request to see the full timeline and shelter conversation.{% endif %}</p>
+      <h2>{% if user.is_staff %}Application Queue{% else %}Application Tracker{% endif %}</h2>
+      <p>{% if user.is_staff %}Open a request to update its status and adoption decision.{% else %}Open a request to see the full timeline and shelter conversation.{% endif %}</p>
     </div>
-    <span>{{ object_list|length }} shown</span>
+    <span>{{ queue_result_count }} shown</span>
   </div>
+
+  {% if user.is_staff %}
+    <section class="panel-card application-queue-filters">
+      <form class="application-filter-form" method="get">
+        <label>
+          <span>Pet</span>
+          <select name="pet">
+            <option value="">All pets</option>
+            {% for pet in queue_pet_choices %}
+              <option value="{{ pet.pk }}" {% if queue_filters.pet == pet.pk|stringformat:"s" %}selected{% endif %}>{{ pet.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select name="status">
+            <option value="">All statuses</option>
+            {% for value, label in status_choices %}
+              <option value="{{ value }}" {% if queue_filters.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          <span>Order</span>
+          <select name="sort">
+            <option value="newest" {% if queue_filters.sort == "newest" %}selected{% endif %}>Newest first</option>
+            <option value="oldest" {% if queue_filters.sort == "oldest" %}selected{% endif %}>Oldest first</option>
+          </select>
+        </label>
+        <button class="primary" type="submit">Apply</button>
+        <a class="button" href="{% url 'application-list' %}">Clear</a>
+      </form>
+    </section>
+  {% endif %}
 
   <div class="application-card-list">
     {% for application in object_list %}
@@ -57,7 +102,9 @@
               <p class="eyebrow">{{ application.pet.get_species_display }}</p>
               <h2><a href="{{ application.get_absolute_url }}">{{ application.pet.name }}</a></h2>
             </div>
-            <span class="status">{{ application.get_status_display }}</span>
+            <div class="application-card-badges">
+              <span class="status">{{ application.get_status_display }}</span>
+            </div>
           </div>
 
           <div class="application-card-facts">
@@ -83,7 +130,9 @@
           </ol>
 
           <div class="application-card-footer">
-            <span>{{ application.messages.count }} message{% if application.messages.count != 1 %}s{% endif %}</span>
+            {% if not user.is_staff %}
+              <span>{{ application.message_count|default:0 }} message{% if application.message_count != 1 %}s{% endif %}</span>
+            {% endif %}
             <a class="button primary" href="{{ application.get_absolute_url }}">{% if user.is_staff %}Review Application{% else %}View Tracker{% endif %}</a>
           </div>
         </div>

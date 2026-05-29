@@ -1,55 +1,109 @@
 {% extends "base.html" %}
 {% block title %}{{ object.name }}{% endblock %}
 {% block content %}
-<section class="panel shelter-profile">
+<section class="shelter-profile-page">
   {% url 'shelter-list' as shelter_back_url %}
   {% include "adoption/partials/back_link.html" with back_url=shelter_back_url back_label="Back to Shelters" %}
-  <div class="split">
-    <div>
-      <p class="eyebrow">Shelter Profile</p>
-      <h1>{{ object.name }}</h1>
+
+  <header class="shelter-profile-hero">
+    <div class="shelter-profile-photo">
+      {% if object.photo %}
+        <img src="{{ object.photo.url }}" alt="{{ object.name }}">
+      {% else %}
+        <span>{{ object.name|first|upper }}</span>
+      {% endif %}
     </div>
-    {% if user.is_staff %}
-      <div class="actions">
-        <a class="button" href="{% url 'shelter-update' object.pk %}">Edit Shelter</a>
+    <div class="shelter-profile-intro">
+      <p class="eyebrow">{{ object.city|default:"Shelter Profile" }}</p>
+      <h1>{{ object.name }}</h1>
+      <p>
+        {% if object.description %}
+          {{ object.description|truncatewords:36 }}
+        {% else %}
+          This shelter has not added a description yet.
+        {% endif %}
+      </p>
+      <div class="shelter-profile-stats" aria-label="Shelter pet summary">
+        <div><strong>{{ posted_pet_count }}</strong><span>Posted pets</span></div>
+        <div><strong>{{ available_pet_count }}</strong><span>Available</span></div>
+        <div><strong>{{ object.city|default:"Listed" }}</strong><span>Location</span></div>
+      </div>
+    </div>
+    {% if can_manage_shelter %}
+      <div class="shelter-profile-actions">
+        <a class="button primary" href="{% url 'shelter-update' object.pk %}">Edit Shelter</a>
+        <a class="button" href="{% url 'pet-create' %}">Post Pet</a>
         {% if user.is_superuser %}<a class="button danger" href="{% url 'shelter-delete' object.pk %}">Delete</a>{% endif %}
       </div>
     {% endif %}
-  </div>
+  </header>
 
   <div class="shelter-profile-grid">
-    <section class="detail-section">
-      <h2>About</h2>
+    <section class="shelter-about-panel">
+      <p class="eyebrow">About</p>
+      <h2>Shelter Details</h2>
       <p>{% if object.description %}{{ object.description|linebreaksbr }}{% else %}No shelter description added yet.{% endif %}</p>
     </section>
+
     <section class="shelter-contact-card">
-      <p><strong>Address</strong><span>{{ object.address }}, {{ object.city }}</span></p>
-      <p><strong>Email</strong><span>{{ object.email }}</span></p>
-      <p><strong>Phone</strong><span>{{ object.phone|default:"Not provided" }}</span></p>
+      <span class="eyebrow">Contact Information</span>
+      <h2>Reach This Shelter</h2>
+      <div>
+        <strong>Address</strong>
+        <span>{{ object.address }}, {{ object.city }}</span>
+      </div>
+      <div>
+        <strong>Email</strong>
+        <span><a href="mailto:{{ object.email }}">{{ object.email }}</a></span>
+      </div>
+      <div>
+        <strong>Phone</strong>
+        <span>
+          {% if object.phone %}
+            <a href="tel:{{ object.phone }}">{{ object.phone }}</a>
+          {% else %}
+            Not provided
+          {% endif %}
+        </span>
+      </div>
     </section>
   </div>
 
-  <div class="panel-title shelter-pets-title">
-    <h2>Posted Pets</h2>
-    {% if user.is_staff %}<a class="button primary" href="{% url 'pet-create' %}">Post Pet</a>{% endif %}
-  </div>
-  <div class="list shelter-pet-list">
-    {% for pet in object.pets.all %}
-      <a class="pet-row" href="{{ pet.get_absolute_url }}">
-        {% if pet.photo %}<img src="{{ pet.photo.url }}" alt="{{ pet.name }}" class="pet-image">{% else %}<span class="pet-thumb">{{ pet.name|first|upper }}</span>{% endif %}
-        <span>
-          <strong>{{ pet.name }}</strong>
-          <small>{{ pet.get_species_display }}{% if pet.breed %} / {{ pet.breed }}{% endif %}</small>
-        </span>
-        <em>{{ pet.get_status_display }}</em>
-      </a>
-    {% empty %}
-      <section class="empty-state">
-        <p class="empty-icon">🐾</p>
-        <h2>No pets posted yet</h2>
-        <p>New pet listings from this shelter will appear here.</p>
-      </section>
-    {% endfor %}
-  </div>
+  <section class="shelter-pets-section">
+    <div class="panel-title shelter-pets-title">
+      <div>
+        <p class="eyebrow">Posted Pets</p>
+        <h2>Pets From {{ object.name }}</h2>
+      </div>
+      {% if can_manage_shelter %}<a class="button primary" href="{% url 'pet-create' %}">Post Pet</a>{% endif %}
+    </div>
+
+    <div class="shelter-profile-pet-grid">
+      {% for pet in posted_pets %}
+        <a class="shelter-profile-pet-card" href="{{ pet.get_absolute_url }}">
+          <span class="shelter-profile-pet-media">
+            {% if pet.photo %}
+              <img src="{{ pet.photo.url }}" alt="{{ pet.name }}">
+            {% else %}
+              <span>{{ pet.name|first|upper }}</span>
+            {% endif %}
+          </span>
+          <span class="shelter-profile-pet-copy">
+            <span class="eyebrow">{{ pet.get_species_display }}{% if pet.breed %} / {{ pet.breed }}{% endif %}</span>
+            <strong>{{ pet.name }}</strong>
+            <small>{{ pet.age }} year{% if pet.age != 1 %}s{% endif %} old</small>
+          </span>
+          <em>{{ pet.get_status_display }}</em>
+        </a>
+      {% empty %}
+        <section class="empty-state shelter-profile-empty">
+          <p class="empty-icon">PA</p>
+          <h2>No pets posted yet</h2>
+          <p>New pet listings from this shelter will appear here.</p>
+          {% if can_manage_shelter %}<a class="button primary" href="{% url 'pet-create' %}">Post First Pet</a>{% endif %}
+        </section>
+      {% endfor %}
+    </div>
+  </section>
 </section>
 {% endblock %}

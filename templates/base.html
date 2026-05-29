@@ -23,14 +23,14 @@
           <a href="{% url 'home' %}" {% if active_url == "home" %}class="active"{% endif %}>Home</a>
         {% endif %}
         {% if user.is_staff %}
-          <a href="{% url 'pet-create' %}" {% if active_url == "pet-create" %}class="active"{% endif %}>Post Pet</a>
+          <a href="{% url 'staff-pet-list' %}" {% if active_url == "staff-pet-list" or active_url == "pet-create" or active_url == "pet-update" or active_url == "pet-detail" %}class="active"{% endif %}>Manage Pets</a>
         {% endif %}
         {% if user.is_authenticated and not user.is_staff %}
           <a href="{% url 'available-pets' %}" {% if active_url == "available-pets" or active_url == "pet-detail" %}class="active"{% endif %}>Browse Pets</a>
         {% endif %}
-        <a href="{% url 'shelter-list' %}" {% if active_url == "shelter-list" or active_url == "shelter-detail" or active_url == "shelter-create" or active_url == "shelter-update" or active_url == "shelter-delete" %}class="active"{% endif %}>Shelters</a>
         {% if user.is_authenticated %}
           <a href="{% url 'application-list' %}" {% if active_url == "application-list" or active_url == "application-detail" or active_url == "application-update" or active_url == "application-delete" or active_url == "application-create" %}class="active"{% endif %}>Applications</a>
+          <a href="{% url 'message-list' %}" {% if active_url == "message-list" %}class="active"{% endif %}>Messages</a>
         {% endif %}
         {% if user.is_superuser %}
           <a href="{% url 'user-list' %}" {% if active_url == "user-list" or active_url == "user-update" or active_url == "user-delete" %}class="active"{% endif %}>Users</a>
@@ -39,13 +39,14 @@
       </nav>
       {% if user.is_authenticated %}
         {% if user.is_staff %}
-          <div class="sidebar-card">
+          <a class="sidebar-card sidebar-card-link" href="{% if staff_sidebar_shelter %}{% url 'shelter-detail' staff_sidebar_shelter.pk %}{% else %}{% url 'shelter-create' %}{% endif %}" aria-label="{% if staff_sidebar_shelter %}Open {{ staff_sidebar_shelter.name }} shelter profile{% else %}Set up your shelter profile{% endif %}">
             <div class="avatar">{{ user.username|first|upper }}</div>
             <div>
               <strong>{{ user.username }}</strong>
               <small>Shelter Staff</small>
+              <small>{% if staff_sidebar_shelter %}{{ staff_sidebar_shelter.name }}{% else %}Set up shelter profile{% endif %}</small>
             </div>
-          </div>
+          </a>
         {% else %}
           <a class="sidebar-card sidebar-card-link" href="{% url 'adopter-profile' %}" aria-label="Open your profile">
             <div class="avatar">{{ user.username|first|upper }}</div>
@@ -76,13 +77,14 @@
       {% if user.is_authenticated %}
         <div class="top-user-card">
           {% if user.is_staff %}
-            <div class="sidebar-card">
+            <a class="sidebar-card sidebar-card-link" href="{% if staff_sidebar_shelter %}{% url 'shelter-detail' staff_sidebar_shelter.pk %}{% else %}{% url 'shelter-create' %}{% endif %}" aria-label="{% if staff_sidebar_shelter %}Open {{ staff_sidebar_shelter.name }} shelter profile{% else %}Set up your shelter profile{% endif %}">
               <div class="avatar">{{ user.username|first|upper }}</div>
               <div>
                 <strong>{{ user.username }}</strong>
                 <small>Shelter Staff</small>
+                <small>{% if staff_sidebar_shelter %}{{ staff_sidebar_shelter.name }}{% else %}Set up shelter profile{% endif %}</small>
               </div>
-            </div>
+            </a>
           {% else %}
             <a class="sidebar-card sidebar-card-link" href="{% url 'adopter-profile' %}" aria-label="Open your profile">
               <div class="avatar">{{ user.username|first|upper }}</div>

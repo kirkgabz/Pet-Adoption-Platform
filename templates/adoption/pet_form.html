@@ -5,8 +5,8 @@
   {% if object %}
     {% include "adoption/partials/back_link.html" with back_url=object.get_absolute_url back_label="Back to Pet" %}
   {% else %}
-    {% url 'pet-list' as pet_back_url %}
-    {% include "adoption/partials/back_link.html" with back_url=pet_back_url back_label="Back to Dashboard" %}
+    {% url 'staff-pet-list' as pet_back_url %}
+    {% include "adoption/partials/back_link.html" with back_url=pet_back_url back_label="Back to Manage Pets" %}
   {% endif %}
   <div class="form-heading">
     <p class="eyebrow">Shelter Pet Management</p>
@@ -17,7 +17,7 @@
     {% csrf_token %}
     {{ form.as_p }}
     <div class="form-actions">
-      <a class="button" href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'pet-list' %}{% endif %}">Cancel</a>
+      <a class="button" href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'staff-pet-list' %}{% endif %}">Cancel</a>
       <button class="primary">{% if object %}Save Changes{% else %}Post Pet{% endif %}</button>
     </div>
   </form>
