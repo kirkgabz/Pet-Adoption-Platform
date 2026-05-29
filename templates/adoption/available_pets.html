@@ -11,10 +11,13 @@
       </div>
     </header>
 
-    <form class="filters dashboard-filters pet-filter-bar" method="get" aria-label="Browse pets filters" data-pet-filter-form>
-      <input type="hidden" name="lat" value="{{ request.GET.lat }}" data-lat-field {% if not near_me_active %}disabled{% endif %}>
-      <input type="hidden" name="lng" value="{{ request.GET.lng }}" data-lng-field {% if not near_me_active %}disabled{% endif %}>
+    <form class="filters dashboard-filters pet-filter-bar" method="get" aria-label="Browse pets filters" data-pet-filter-form data-location-api-ready="true">
+      <input type="hidden" name="lat" value="{{ near_me_latitude }}" data-lat-field {% if not near_me_active %}disabled{% endif %}>
+      <input type="hidden" name="lng" value="{{ near_me_longitude }}" data-lng-field {% if not near_me_active %}disabled{% endif %}>
       <input type="hidden" name="radius" value="{{ request.GET.radius|default:near_me_radius }}" data-radius-field {% if not near_me_active %}disabled{% endif %}>
+      <input type="hidden" name="location_source" value="{{ near_me_source }}" data-location-source-field {% if not near_me_active %}disabled{% endif %}>
+      <input type="hidden" name="location_label" value="{{ near_me_label }}" data-location-label-field {% if not near_me_active %}disabled{% endif %}>
+      <input type="hidden" name="accuracy" value="{{ near_me_accuracy }}" data-location-accuracy-field {% if not near_me_active %}disabled{% endif %}>
       <label class="filter-control">
         <span>Species</span>
         <select class="field" name="species">
@@ -28,7 +31,7 @@
           <input class="field" name="location" placeholder="City, barangay, or shelter" value="{{ request.GET.location }}">
           <button class="button location-near-me" type="button" data-near-me>Near me</button>
         </div>
-        <small class="filter-help" data-location-status>{% if near_me_active %}Showing pets within {{ near_me_radius|floatformat:0 }} km of you.{% else %}Use your current location or type an area.{% endif %}</small>
+        <small class="filter-help" data-location-status>{% if near_me_active %}Showing pets within {{ near_me_radius|floatformat:0 }} km of {% if near_me_label %}{{ near_me_label }}{% else %}you{% endif %}.{% else %}Use your current location or type an area.{% endif %}</small>
       </label>
       <label class="filter-control">
         <span>Personality</span>
@@ -53,7 +56,7 @@
       </label>
       <div class="filter-actions">
         <button class="primary">Apply Filters</button>
-        {% if request.GET.species or request.GET.location or request.GET.tag or request.GET.shelter or request.GET.age or request.GET.lat or request.GET.lng %}
+        {% if request.GET.species or request.GET.location or request.GET.tag or request.GET.shelter or request.GET.age or near_me_active %}
           <a class="button filter-clear" href="{% url 'available-pets' %}">Clear</a>
         {% endif %}
       </div>
@@ -253,20 +256,95 @@
     const latitudeInput = filterForm.querySelector('[data-lat-field]');
     const longitudeInput = filterForm.querySelector('[data-lng-field]');
     const radiusInput = filterForm.querySelector('[data-radius-field]');
+    const locationSourceInput = filterForm.querySelector('[data-location-source-field]');
+    const locationLabelInput = filterForm.querySelector('[data-location-label-field]');
+    const locationAccuracyInput = filterForm.querySelector('[data-location-accuracy-field]');
     const locationStatus = filterForm.querySelector('[data-location-status]');
+    const coordinateFields = [
+      latitudeInput,
+      longitudeInput,
+      radiusInput,
+      locationSourceInput,
+      locationLabelInput,
+      locationAccuracyInput
+    ].filter(Boolean);
 
     function enableCoordinateFields(){
-      latitudeInput.disabled = false;
-      longitudeInput.disabled = false;
-      radiusInput.disabled = false;
+      coordinateFields.forEach(function(field){
+        field.disabled = false;
+      });
     }
 
     function clearCoordinateFields(){
-      latitudeInput.value = '';
-      longitudeInput.value = '';
-      latitudeInput.disabled = true;
-      longitudeInput.disabled = true;
-      radiusInput.disabled = true;
+      coordinateFields.forEach(function(field){
+        field.value = '';
+        field.disabled = true;
+      });
+    }
+
+    function firstPresent(values){
+      for (let index = 0; index < values.length; index += 1) {
+        if (values[index] !== undefined && values[index] !== null && values[index] !== '') {
+          return values[index];
+        }
+      }
+      return null;
+    }
+
+    function toNumber(value){
+      const number = Number.parseFloat(value);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function normalizeLocationResult(result){
+      if (!result) return null;
+      const coords = result.coords || result.location || result;
+      const latitude = toNumber(firstPresent([coords.latitude, coords.lat]));
+      const longitude = toNumber(firstPresent([coords.longitude, coords.lng, coords.lon]));
+      if (latitude === null || longitude === null) return null;
+      return {
+        latitude: latitude,
+        longitude: longitude,
+        radius: toNumber(firstPresent([result.radius, coords.radius])),
+        accuracy: toNumber(firstPresent([result.accuracy, coords.accuracy])),
+        label: firstPresent([result.label, result.name, coords.label, coords.name]) || '',
+        source: firstPresent([result.source, coords.source]) || 'api'
+      };
+    }
+
+    function getBrowserLocation(){
+      return new Promise(function(resolve, reject){
+        if (!navigator.geolocation) {
+          reject(new Error('geolocation-unavailable'));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          function(position){
+            resolve({
+              coords: {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
+              },
+              source: 'browser'
+            });
+          },
+          reject,
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+        );
+      });
+    }
+
+    function getNearMeLocation(){
+      const provider = window.petAdoptionLocationProvider;
+      if (provider && typeof provider.getCurrentPosition === 'function') {
+        return Promise.resolve(provider.getCurrentPosition()).then(function(result){
+          const normalized = normalizeLocationResult(result);
+          if (!normalized) throw new Error('location-api-invalid-response');
+          return normalized;
+        });
+      }
+      return getBrowserLocation().then(normalizeLocationResult);
     }
 
     if (locationInput) {
@@ -278,32 +356,29 @@
 
     if (nearMeButton) {
       nearMeButton.addEventListener('click', function(){
-        if (!navigator.geolocation) {
-          if (locationStatus) locationStatus.textContent = 'Your browser does not support current-location filtering.';
-          return;
-        }
-
         nearMeButton.disabled = true;
         nearMeButton.textContent = 'Finding...';
-        if (locationStatus) locationStatus.textContent = 'Asking your browser for your current location.';
+        if (locationStatus) locationStatus.textContent = 'Finding your current location.';
 
-        navigator.geolocation.getCurrentPosition(
-          function(position){
+        getNearMeLocation()
+          .then(function(position){
             enableCoordinateFields();
-            latitudeInput.value = position.coords.latitude.toFixed(6);
-            longitudeInput.value = position.coords.longitude.toFixed(6);
+            latitudeInput.value = position.latitude.toFixed(6);
+            longitudeInput.value = position.longitude.toFixed(6);
+            if (position.radius !== null && radiusInput) radiusInput.value = position.radius;
             if (!radiusInput.value) radiusInput.value = '{{ near_me_radius|floatformat:0 }}';
+            if (locationSourceInput) locationSourceInput.value = position.source;
+            if (locationLabelInput) locationLabelInput.value = position.label;
+            if (locationAccuracyInput && position.accuracy !== null) locationAccuracyInput.value = position.accuracy.toFixed(0);
             if (locationInput) locationInput.value = '';
-            if (locationStatus) locationStatus.textContent = 'Filtering pets near your current location.';
+            if (locationStatus) locationStatus.textContent = position.label ? 'Filtering pets near ' + position.label + '.' : 'Filtering pets near your current location.';
             filterForm.submit();
-          },
-          function(error){
+          })
+          .catch(function(error){
             nearMeButton.disabled = false;
             nearMeButton.textContent = 'Near me';
-            if (locationStatus) locationStatus.textContent = 'Location permission was not completed. You can still type a city or barangay.';
-          },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
-        );
+            if (locationStatus) locationStatus.textContent = error.message === 'geolocation-unavailable' ? 'Current-location filtering needs browser location or a location API.' : 'Location permission was not completed. You can still type a city or barangay.';
+          });
       });
     }
   })();
