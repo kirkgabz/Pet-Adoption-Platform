@@ -15,6 +15,7 @@ from .forms import (
     AdopterProfileForm,
     AdoptionApplicationForm,
     ApplicationStatusForm,
+    CareTipsForm,
     MessageForm,
     PersonalityTagForm,
     PetForm,
@@ -1369,3 +1370,59 @@ def nearby_shelters(request):
         "adoption/nearby_shelters.html",
         {"results": results, "latitude": latitude, "longitude": longitude, "radius": radius},
     )
+
+
+def care_tips(request):
+    tips = None
+    species = None
+    breed = None
+    form = CareTipsForm(request.GET or None)
+
+    if form.is_valid():
+        species = form.cleaned_data["species"]
+        breed = form.cleaned_data.get("breed")
+
+        tips_data = {
+            "dog": [
+                "Provide a balanced diet suitable for their age and size.",
+                "Ensure daily exercise through walks and playtime.",
+                "Maintain regular veterinary check-ups and vaccinations.",
+                "Socialize your dog with other pets and people early on.",
+            ],
+            "cat": [
+                "Provide multiple scratching posts to save your furniture.",
+                "Keep the litter box clean and in a quiet location.",
+                "Engage in daily play sessions to satisfy their hunting instinct.",
+                "Offer fresh water at all times, preferably in a fountain.",
+            ],
+            "bird": [
+                "Ensure their cage is large enough for short flights.",
+                "Provide a variety of fresh fruits and vegetables daily.",
+                "Keep them in a draft-free environment with plenty of light.",
+                "Spend time talking and interacting with them to prevent boredom.",
+            ],
+            "rabbit": [
+                "Unlimited high-quality grass hay is essential for their digestion.",
+                "Provide a safe, bunny-proofed area for daily exercise.",
+                "Groom them regularly to prevent hairballs.",
+                "Never pick them up by their ears; support their hindquarters.",
+            ],
+        }
+
+        tips = tips_data.get(species, [])
+        if breed and species == "dog":
+            if "retriever" in breed.lower() or "labrador" in breed.lower():
+                tips.append("Labs and Retrievers are prone to obesity; monitor their food intake closely.")
+            elif "german shepherd" in breed.lower():
+                tips.append("German Shepherds are highly intelligent and need mental stimulation.")
+        elif breed and species == "cat":
+            if "siamese" in breed.lower():
+                tips.append("Siamese cats are very vocal and social; they thrive on interaction.")
+
+    context = {
+        "form": form,
+        "tips": tips,
+        "species": species,
+        "breed": breed,
+    }
+    return render(request, "adoption/care_tips.html", context)

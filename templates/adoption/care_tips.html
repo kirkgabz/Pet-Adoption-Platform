@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Pet Care Tips{% endblock %}
+{% block content %}
+<section class="dashboard care-tips-page">
+  <div class="dashboard-main">
+    <header class="dash-header">
+      <div>
+        <p class="eyebrow">Expert Advice</p>
+        <h1>Pet Care Tips</h1>
+        <p class="dash-subtitle">Select a species and optional breed to get tailored advice for your furry or feathered friend.</p>
+      </div>
+    </header>
+
+    <div class="dashboard-grid">
+      <div class="dashboard-column primary">
+        <form class="filters dashboard-filters" method="get" style="margin-bottom: 2rem;">
+          {% for field in form %}
+            <label class="filter-control">
+              <span>{{ field.label }}</span>
+              {{ field }}
+              {% if field.errors %}
+                <div class="field-error">{{ field.errors|striptags }}</div>
+              {% endif %}
+            </label>
+          {% endfor %}
+          <div class="filter-actions" style="display: flex; gap: 1rem; align-items: flex-end;">
+            <button class="button primary" type="submit">Get Tips</button>
+            <a class="button" href="{% url 'care-tips' %}">Reset</a>
+          </div>
+        </form>
+
+        {% if tips %}
+          <div class="care-tips-results">
+            <h2 class="section-title" style="margin-bottom: 1.5rem;">Tips for your {% if breed %}{{ breed }} {% endif %}{{ species|title }}</h2>
+            <div class="pet-grid">
+              {% for tip in tips %}
+                <article class="tip-card" style="margin-bottom: 1rem;">
+                  <div class="tip-card-body">
+                    <p>{{ tip }}</p>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          </div>
+        {% elif form.is_valid %}
+          <div class="empty-state">
+            <p>No specific tips found for this selection, but check back soon!</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

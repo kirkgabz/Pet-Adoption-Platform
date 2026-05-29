@@ -5054,3 +5054,16 @@ textarea:focus {
     border-radius: 16px;
   }
 }
+
+/* Care Tips Page */
+.care-tips-results .pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.tip-card-body {
+  padding: 1.5rem;
+  line-height: 1.6;
+  color: var(--text);
+}

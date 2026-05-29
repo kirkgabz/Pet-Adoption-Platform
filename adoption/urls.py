@@ -22,6 +22,7 @@ urlpatterns = [
     path("shelters/<int:pk>/delete/", views.ShelterDeleteView.as_view(), name="shelter-delete"),
     path("applications/", views.ApplicationListView.as_view(), name="application-list"),
     path("messages/", views.MessageListView.as_view(), name="message-list"),
+    path("care-tips/", views.care_tips, name="care-tips"),
     path("applications/<int:pk>/", views.application_detail, name="application-detail"),
     path("applications/<int:pk>/edit/", views.ApplicationUpdateView.as_view(), name="application-update"),
     path("applications/<int:pk>/delete/", views.ApplicationDeleteView.as_view(), name="application-delete"),
