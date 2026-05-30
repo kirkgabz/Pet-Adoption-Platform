@@ -1,5 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Browse Pets{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+  .leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    font-family: inherit;
+    background: #fbf7ef !important;
+    border: 1px solid var(--line);
+    box-shadow: 0 8px 24px rgba(85, 66, 42, 0.12) !important;
+  }
+  .leaflet-popup-content {
+    margin: 14px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  .map-popup-btn {
+    display: block;
+    width: 100%;
+    background-color: var(--brand-dark);
+    color: white !important;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none !important;
+    margin-top: 8px;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.1s, background-color 0.2s;
+  }
+  .map-popup-btn:hover {
+    background-color: var(--brand-contrast);
+    transform: translateY(-1px);
+  }
+  .map-section {
+    background: var(--panel);
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(85, 66, 42, 0.06);
+    margin-bottom: 2rem;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <section class="dashboard available-pets-page">
   <div class="dashboard-main">
@@ -63,7 +110,7 @@
     </form>
 
     <div class="dashboard-panels">
-      <section class="panel-card">
+      <section class="panel-card" id="pets-list-section">
         <div class="panel-title">
           <div>
             <h2>Browse Pets</h2>
@@ -71,6 +118,15 @@
           </div>
           <span class="pet-count">{{ paginator.count }} pets</span>
         </div>
+
+        <!-- Nearby Shelters Map Section -->
+        <div class="map-section" style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            🗺️ Nearby Shelters Map
+          </h3>
+          <div id="shelters-map" style="height: 380px; width: 100%; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 4px 12px rgba(85, 66, 42, 0.05); z-index: 5;"></div>
+        </div>
+
         <div class="pets-grid">
           {% for pet in object_list %}
             <a class="pet-card pet-preview-trigger" href="{{ pet.get_absolute_url }}" data-preview-target="pet-preview-{{ pet.pk }}">
@@ -448,6 +504,121 @@
     document.addEventListener('keydown', function(event){
       if (event.key === 'Escape' && !overlay.hidden) closePreview();
     });
+  })();
+</script>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+  (function() {
+    const sheltersData = [
+      {% for s in shelters %}
+        {% if s.latitude and s.longitude %}
+          {
+            id: "{{ s.id }}",
+            name: "{{ s.name|escapejs }}",
+            address: "{{ s.address|escapejs }}",
+            city: "{{ s.city|escapejs }}",
+            lat: {{ s.latitude }},
+            lng: {{ s.longitude }},
+            availablePets: {{ s.available_pet_total|default:0 }}
+          },
+        {% endif %}
+      {% endfor %}
+    ];
+
+    document.addEventListener("DOMContentLoaded", function() {
+      // Default location: Puerto Princesa City, Palawan
+      const defaultLat = 9.7400;
+      const defaultLng = 118.7353;
+      
+      const userLat = {% if near_me_latitude %}{{ near_me_latitude }}{% else %}null{% endif %};
+      const userLng = {% if near_me_longitude %}{{ near_me_longitude }}{% else %}null{% endif %};
+      
+      const centerLat = userLat || defaultLat;
+      const centerLng = userLng || defaultLng;
+      const zoomLevel = userLat ? 13 : 12;
+
+      // Initialize map
+      const map = L.map('shelters-map').setView([centerLat, centerLng], zoomLevel);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // Add user location marker
+      if (userLat && userLng) {
+        L.circleMarker([userLat, userLng], {
+          radius: 8,
+          fillColor: '#2f8f83',
+          color: '#ffffff',
+          weight: 2.5,
+          opacity: 1,
+          fillOpacity: 0.9
+        }).addTo(map).bindPopup("<b>🏠 Your Current Location</b>").openPopup();
+      }
+
+      // Add shelter markers
+      sheltersData.forEach(function(shelter) {
+        let distanceText = "";
+        if (userLat && userLng) {
+          const dist = calculateDistance(userLat, userLng, shelter.lat, shelter.lng);
+          distanceText = `<br><b>📏 Distance:</b> ${dist.toFixed(1)} km away`;
+        }
+
+        const marker = L.marker([shelter.lat, shelter.lng]).addTo(map);
+        
+        const popupContent = `
+          <div style="font-size: 13px; color: var(--ink);">
+            <strong style="font-size: 14px; color: var(--brand-dark);">${shelter.name}</strong><br>
+            <span style="color: var(--muted);">📍 ${shelter.address}, ${shelter.city}</span><br>
+            <b>🐾 Available Pets:</b> ${shelter.availablePets}
+            ${distanceText}<br>
+            <button class="map-popup-btn" onclick="filterByShelter('${shelter.id}')">View Pets from Shelter</button>
+          </div>
+        `;
+        marker.bindPopup(popupContent);
+      });
+
+      function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+      }
+    });
+
+    window.filterByShelter = function(shelterId) {
+      const filterForm = document.querySelector('[data-pet-filter-form]');
+      if (filterForm) {
+        const shelterSelect = filterForm.querySelector('select[name="shelter"]');
+        if (shelterSelect) {
+          shelterSelect.value = shelterId;
+          
+          // Re-enable coordinate inputs to preserve location sorting if active
+          const latField = filterForm.querySelector('[data-lat-field]');
+          if (latField && latField.value) {
+            const hiddenInputs = filterForm.querySelectorAll('input[type="hidden"]');
+            hiddenInputs.forEach(i => i.disabled = false);
+          }
+          filterForm.submit();
+        }
+      }
+    };
+
+    // Smooth scroll to pets list when filters are active on load
+    if (window.location.search && window.location.search.indexOf('clear') === -1) {
+      const element = document.getElementById('pets-list-section');
+      if (element) {
+        setTimeout(function() {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
   })();
 </script>
 {% endblock %}

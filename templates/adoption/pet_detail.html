@@ -29,15 +29,37 @@
     <div class="pet-facts">
       <div><strong>{{ object.get_species_display }}</strong><span>Species</span></div>
       <div><strong>{% if object.breed %}{{ object.breed }}{% else %}Mixed{% endif %}</strong><span>Breed</span></div>
-      <div><strong>{{ object.age }}</strong><span>Years old</span></div>
+      <div><strong>{{ object.get_gender_display|default:"Unknown" }}</strong><span>Gender</span></div>
+      <div><strong>{{ object.age }} yrs</strong><span>Age</span></div>
+      <div><strong>{% if object.weight %}{{ object.weight }} kg{% else %}--{% endif %}</strong><span>Weight</span></div>
+      <div><strong>{% if object.color %}{{ object.color }}{% else %}--{% endif %}</strong><span>Color</span></div>
+      <div><strong>₱{{ object.adoption_fee|floatformat:2 }}</strong><span>Adoption Fee</span></div>
       <div><strong>{{ object.shelter.city|default:"Listed" }}</strong><span>Location</span></div>
-      <div><strong>{{ object.application_count|default:0 }}</strong><span>Applications</span></div>
-      <div><strong>{{ object.updated_at|date:"M j, Y" }}</strong><span>Last updated</span></div>
     </div>
 
     <section class="detail-section">
       <h2>About {{ object.name }}</h2>
       <p>{{ object.description|linebreaksbr }}</p>
+      
+      <h3 style="margin-top: 1.5rem; font-size: 1.1rem; color: var(--ink);">Pet Gallery</h3>
+      <div class="pet-gallery" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-top: 10px;">
+        {% if object.photo %}
+          <img class="detail-gallery-img pet-image" src="{{ object.photo.url }}" alt="{{ object.name }}" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+        {% endif %}
+        {% if object.species == 'dog' %}
+          <img class="detail-gallery-img pet-image" src="https://loremflickr.com/600/400/dog?random=1" alt="Gallery Photo 1" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+          <img class="detail-gallery-img pet-image" src="https://loremflickr.com/600/400/dog?random=2" alt="Gallery Photo 2" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+          <img class="detail-gallery-img pet-image" src="https://loremflickr.com/600/400/dog?random=3" alt="Gallery Photo 3" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+        {% elif object.species == 'cat' %}
+          <img class="detail-gallery-img pet-image" src="https://loremflickr.com/600/400/cat?random=1" alt="Gallery Photo 1" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+          <img class="detail-gallery-img pet-image" src="https://loremflickr.com/600/400/cat?random=2" alt="Gallery Photo 2" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+          <img class="detail-gallery-img pet-image" src="https://loremflickr.com/600/400/cat?random=3" alt="Gallery Photo 3" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+        {% else %}
+          <img class="detail-gallery-img pet-image" src="https://picsum.photos/600/400?random=1" alt="Gallery Photo 1" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+          <img class="detail-gallery-img pet-image" src="https://picsum.photos/600/400?random=2" alt="Gallery Photo 2" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+          <img class="detail-gallery-img pet-image" src="https://picsum.photos/600/400?random=3" alt="Gallery Photo 3" style="border-radius: 10px; cursor: pointer; aspect-ratio: 4/3; object-fit: cover; border: 1px solid var(--line);" data-species="cat">
+        {% endif %}
+      </div>
     </section>
 
     <section class="detail-section">
@@ -45,11 +67,23 @@
       <div class="tags">{% for tag in object.personality_tags.all %}<span>{{ tag.name }}</span>{% empty %}<span>Ready for a family</span>{% endfor %}</div>
     </section>
 
-    <section class="shelter-mini-card">
+    <section class="detail-section">
+      <h2>Medical History & Health</h2>
+      <p><strong>Vaccination Records:</strong> {{ object.vaccination_status|default:"Up-to-date on all core vaccinations." }}</p>
+      <p><strong>Medical History:</strong> {{ object.medical_history|default:"Healthy, spayed/neutered, and dewormed. No chronic medical conditions reported." }}</p>
+    </section>
+
+    <section class="detail-section">
+      <h2>Adoption Requirements</h2>
+      <p>{{ object.requirements|default:"Requires signed adoption agreement, home environment check, and family interview." }}</p>
+    </section>
+
+    <section class="shelter-mini-card" style="margin-top: 2rem; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel);">
       <div>
-        <p class="eyebrow">Shelter</p>
-        <h2><a href="{{ object.shelter.get_absolute_url }}">{{ object.shelter.name }}</a></h2>
-        <p>{{ object.shelter.address }}, {{ object.shelter.city }}</p>
+        <p class="eyebrow">Shelter Partner</p>
+        <h2 style="margin-bottom: 0.5rem;"><a href="{{ object.shelter.get_absolute_url }}">{{ object.shelter.name }}</a></h2>
+        <p style="margin: 0; color: var(--muted);">📍 Address: {{ object.shelter.address }}{% if object.shelter.barangay %}, Brgy. {{ object.shelter.barangay }}{% endif %}, {{ object.shelter.city }}</p>
+        <p style="margin: 4px 0 0; color: var(--muted);">📞 Phone: {{ object.shelter.phone|default:"Not listed" }} | ✉️ Email: {{ object.shelter.email }}</p>
       </div>
     </section>
 

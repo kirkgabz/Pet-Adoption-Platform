@@ -863,6 +863,11 @@ class AvailablePetsView(ListView):
         context["tags"] = PersonalityTag.objects.all()
         context["shelters"] = (
             Shelter.objects.filter(pets__status=Pet.Status.AVAILABLE, pets__is_archived=False)
+            .annotate(available_pet_total=Count(
+                "pets",
+                filter=Q(pets__status=Pet.Status.AVAILABLE, pets__is_archived=False),
+                distinct=True
+            ))
             .distinct()
             .order_by("name")
         )

@@ -12,6 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="PetAdopt">
   <link rel="apple-touch-icon" href="{% static 'img/logo-192.png' %}">
+  {% block extra_css %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <div class="app-shell">
