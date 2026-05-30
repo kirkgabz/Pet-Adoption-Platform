@@ -13,7 +13,9 @@
       <div class="header-meta-box">
         <div style="font-size:12px;color:var(--muted);">{{ current_date|date:"l, F j, Y" }}</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          {% if weather_icon %}
+          {% if weather_icon_url %}
+            <img src="{{ weather_icon_url }}" alt="{{ weather_desc }}" style="width:24px;height:24px;vertical-align:middle;">
+          {% elif weather_icon %}
             <img src="https://openweathermap.org/img/wn/{{ weather_icon }}@2x.png" alt="{{ weather_desc }}" style="width:24px;height:24px;vertical-align:middle;">
           {% endif %}
           <div id="temp-display">{% if current_temp is not None %}{{ current_temp }} C{% else %}- C{% endif %}</div>
@@ -45,6 +47,17 @@
           <a class="button primary" href="{% url 'shelter-update' staff_shelter.pk %}">Complete Profile</a>
         </section>
       {% endif %}
+    {% endif %}
+
+    {% if adopter_profile_incomplete %}
+      <section class="dashboard-alert shelter-setup-reminder">
+        <div>
+          <p class="eyebrow">Profile Reminder</p>
+          <h2>Complete your adopter profile</h2>
+          <p>Add your location, preferred pet, home type, and experience so shelters can review your applications faster.</p>
+        </div>
+        <a class="button primary" href="{% url 'adopter-onboarding' %}?next={{ request.get_full_path|urlencode }}">Complete Profile</a>
+      </section>
     {% endif %}
 
     {% if user.is_staff %}

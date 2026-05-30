@@ -87,6 +87,7 @@ def landing_page_context(request, **overrides):
         "landing_pets": landing_pets_queryset(),
         "landing_login_form": AuthenticationForm(request),
         "landing_register_form": UserRegisterForm(),
+        "google_login_configured": is_google_login_configured(request),
         "landing_auth_open": False,
         "landing_auth_view": "login",
         "landing_login_role": "user",
@@ -433,12 +434,14 @@ class PetListView(LoginRequiredMixin, ListView):
             else "Add clear photos, personality tags, and honest care notes so adopters know what life with each pet feels like."
         )
         if self.request.user.is_staff:
+            context["adopter_profile_incomplete"] = False
             context.update(self.get_staff_dashboard_context(pet_scope, application_scope))
             context["active_applications"] = []
             context["saved_pets"] = []
             context["recent_shelter_messages"] = []
             context["recommended_pets"] = []
         else:
+            context["adopter_profile_incomplete"] = not adopter_has_completed_onboarding(self.request.user)
             context.update(self.get_adopter_dashboard_context(application_scope))
         # Current date
         context["current_date"] = datetime.datetime.now()
@@ -465,38 +468,84 @@ class PetListView(LoginRequiredMixin, ListView):
         else:
             city = getattr(settings, "DEFAULT_CITY", None) or "London"
 
+        # Initialize defaults
+        context["current_temp"] = None
+        context["current_temp_f"] = None
+        context["weather_icon"] = None
+        context["weather_icon_url"] = None
+        context["weather_desc"] = None
+
         if api_key and requests:
             cache_key = f"weather_{city.lower()}"
             cached = cache.get(cache_key)
             data = None
+            is_weather_api = len(api_key) in (30, 31)  # WeatherAPI.com keys are 30 or 31 chars
+
             if cached:
                 data = cached
             else:
                 try:
-                    url = f"https://api.openweathermap.org/data/2.5/weather"
-                    params = {"q": city, "units": "metric", "appid": api_key}
+                    if is_weather_api:
+                        url = "https://api.weatherapi.com/v1/current.json"
+                        params = {"key": api_key, "q": city}
+                    else:
+                        url = "https://api.openweathermap.org/data/2.5/weather"
+                        params = {"q": city, "units": "metric", "appid": api_key}
+                    
                     res = requests.get(url, params=params, timeout=4)
                     if res.status_code == 200:
                         data = res.json()
-                        # cache for 15 minutes
                         cache.set(cache_key, data, 900)
                 except Exception:
                     data = None
 
+            # Extract data based on API type
+            success = False
             if data:
-                temp = data.get("main", {}).get("temp")
-                if temp is not None:
-                    c = round(float(temp))
+                if is_weather_api:
+                    current = data.get("current", {})
+                    temp = current.get("temp_c")
+                    if temp is not None:
+                        c = round(float(temp))
+                        f = round((c * 9.0 / 5.0) + 32)
+                        context["current_temp"] = c
+                        context["current_temp_f"] = f
+                        condition = current.get("condition", {})
+                        icon = condition.get("icon", "")
+                        context["weather_icon"] = icon
+                        context["weather_icon_url"] = f"https:{icon}" if icon.startswith("//") else icon
+                        context["weather_desc"] = condition.get("text", "")
+                        success = True
+                else:
+                    temp = data.get("main", {}).get("temp")
+                    if temp is not None:
+                        c = round(float(temp))
+                        f = round((c * 9.0 / 5.0) + 32)
+                        context["current_temp"] = c
+                        context["current_temp_f"] = f
+                        weather = data.get("weather")
+                        if weather and isinstance(weather, list) and weather:
+                            icon = weather[0].get("icon")
+                            context["weather_icon"] = icon
+                            context["weather_icon_url"] = f"https://openweathermap.org/img/wn/{icon}@2x.png"
+                            context["weather_desc"] = weather[0].get("description")
+                            success = True
+
+            if not success:
+                # Use deterministic fallback based on city
+                try:
+                    base = (sum(ord(c) for c in (city or '')) % 12) + 12
+                    c = int(base)
                     f = round((c * 9.0 / 5.0) + 32)
                     context["current_temp"] = c
                     context["current_temp_f"] = f
-                weather = data.get("weather")
-                if weather and isinstance(weather, list) and weather:
-                    context["weather_icon"] = weather[0].get("icon")
-                    context["weather_desc"] = weather[0].get("description")
+                    context["weather_icon"] = '01d'
+                    context["weather_icon_url"] = "https://openweathermap.org/img/wn/01d@2x.png"
+                    context["weather_desc"] = 'clear sky'
+                except Exception:
+                    pass
         else:
             # No API key or requests unavailable — provide a deterministic fallback
-            # based on city name so the dashboard always shows a temperature.
             try:
                 base = (sum(ord(c) for c in (city or '')) % 12) + 12
                 c = int(base)
@@ -504,12 +553,10 @@ class PetListView(LoginRequiredMixin, ListView):
                 context["current_temp"] = c
                 context["current_temp_f"] = f
                 context["weather_icon"] = '01d'
+                context["weather_icon_url"] = "https://openweathermap.org/img/wn/01d@2x.png"
                 context["weather_desc"] = 'clear sky'
             except Exception:
-                context["current_temp"] = None
-                context["current_temp_f"] = None
-                context["weather_icon"] = None
-                context["weather_desc"] = None
+                pass
 
         return context
 

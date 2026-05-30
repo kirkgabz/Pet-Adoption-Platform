@@ -194,11 +194,13 @@
               </label>
               <button type="submit" class="primary" data-login-submit>{% if landing_login_role == "staff" %}Login as Shelter Staff{% else %}Login as Adopter{% endif %}</button>
             </form>
-            <div class="landing-auth-divider">or</div>
-            <form class="social-login-form landing-google-form" method="get" action="{% url 'google_login' %}">
-              <input type="hidden" name="role" value="{{ landing_login_role|default:'user' }}" data-google-login-role-input>
-              {% include "registration/partials/google_button.html" %}
-            </form>
+            {% if google_login_configured %}
+              <div class="landing-auth-divider">or</div>
+              <form class="social-login-form landing-google-form" method="get" action="{% url 'google_login' %}">
+                <input type="hidden" name="role" value="{{ landing_login_role|default:'user' }}" data-google-login-role-input>
+                {% include "registration/partials/google_button.html" %}
+              </form>
+            {% endif %}
             <p class="landing-auth-switch">New here? <button type="button" data-auth-view="register">Create an account</button></p>
           </div>
 
@@ -252,11 +254,13 @@
               </div>
               <button type="submit" class="primary">Sign Up</button>
             </form>
-            <div class="landing-auth-divider">or</div>
-            <form class="social-login-form landing-google-form" method="get" action="{% url 'google_login' %}">
-              <input type="hidden" name="role" value="user" data-google-register-role-input>
-              {% include "registration/partials/google_button.html" %}
-            </form>
+            {% if google_login_configured %}
+              <div class="landing-auth-divider">or</div>
+              <form class="social-login-form landing-google-form" method="get" action="{% url 'google_login' %}">
+                <input type="hidden" name="role" value="user" data-google-register-role-input>
+                {% include "registration/partials/google_button.html" %}
+              </form>
+            {% endif %}
             <p class="landing-auth-switch">Already registered? <button type="button" data-auth-view="login">Login</button></p>
           </div>
 

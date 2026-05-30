@@ -306,6 +306,7 @@ class FrontendRenderTests(TestCase):
         self.assertNotContains(response, f'href="{reverse("care-tips")}"')
         self.assertNotContains(response, "Care Tips")
 
+    @override_settings(SOCIALACCOUNT_PROVIDERS={"google": {"APPS": [{"client_id": "test-id", "secret": "test-secret", "key": ""}]}})
     def test_landing_browse_tab_is_closable_and_has_no_guest_card(self):
         response = self.client.get(reverse("home"))
 
@@ -339,6 +340,14 @@ class FrontendRenderTests(TestCase):
             self.assertNotIn(reverse("register"), action_block)
         self.assertNotContains(response, "Guest User")
         self.assertNotContains(response, "Visitor")
+
+    @override_settings(SOCIALACCOUNT_PROVIDERS={"google": {}})
+    def test_landing_hides_google_login_when_not_configured(self):
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, f'action="{reverse("google_login")}"')
+        self.assertNotContains(response, "Continue with Google Account")
 
     @override_settings(SOCIALACCOUNT_PROVIDERS={"google": {}})
     def test_google_login_start_stores_selected_role(self):
@@ -1012,7 +1021,7 @@ class FrontendRenderTests(TestCase):
         expected = f"{reverse('adopter-onboarding')}?{urlencode({'next': reverse('pet-list')})}"
         self.assertRedirects(response, expected)
 
-    def test_incomplete_adopter_is_redirected_to_onboarding(self):
+    def test_incomplete_adopter_can_open_dashboard_with_profile_reminder(self):
         user = User.objects.create_user(
             username="incomplete",
             email="incomplete@example.com",
@@ -1022,7 +1031,21 @@ class FrontendRenderTests(TestCase):
 
         response = self.client.get(reverse("pet-list"))
 
-        expected = f"{reverse('adopter-onboarding')}?{urlencode({'next': reverse('pet-list')})}"
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Complete your adopter profile")
+        self.assertContains(response, f"{reverse('adopter-onboarding')}?next={reverse('pet-list')}")
+
+    def test_incomplete_adopter_is_redirected_to_onboarding_for_protected_pages(self):
+        user = User.objects.create_user(
+            username="incompleteapply",
+            email="incompleteapply@example.com",
+            password="password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("available-pets"))
+
+        expected = f"{reverse('adopter-onboarding')}?{urlencode({'next': reverse('available-pets')})}"
         self.assertRedirects(response, expected)
 
     def test_onboarding_page_uses_landing_required_step_tab(self):
