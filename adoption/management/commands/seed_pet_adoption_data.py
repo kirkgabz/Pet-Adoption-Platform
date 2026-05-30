@@ -61,16 +61,41 @@ class Command(BaseCommand):
             )
             shelter_objs.append(shelter)
 
+        import os
+        from django.core.files import File
+        from django.conf import settings
+
+        # Clear existing pets, applications, and messages to have a clean slate with images
+        Pet.objects.all().delete()
+
         # Create 20 pets
         pet_names = ["Bella", "Max", "Luna", "Charlie", "Lucy", "Cooper", "Daisy", "Milo", "Zoe", "Rocky", "Sadie", "Bear", "Molly", "Tucker", "Stella", "Oliver", "Chloe", "Duke", "Penny", "Leo", "Lola", "Jack", "Lily", "Buster", "Ruby"]
         breeds_dogs = ["Aspin", "Golden Retriever Mix", "Labrador Mix", "Shih Tzu Mix", "Poodle Mix", "German Shepherd Mix"]
         breeds_cats = ["Puspin", "Siamese Mix", "Persian Mix", "Domestic Shorthair", "Calico"]
+        breeds_birds = ["Budgerigar", "Canary", "Lovebird", "Cockatiel"]
+        breeds_rabbits = ["Dutch Rabbit", "Flemish Giant", "Lionhead", "Mini Lop"]
         colors = ["Black", "White", "Brown", "Golden", "Tricolor", "Tabby", "Calico", "Orange", "Gray"]
+
+        img_dir = os.path.join(settings.BASE_DIR, 'static', 'img', 'pet images')
+        species_images = {
+            "dog": [os.path.join(img_dir, "dog golden.jpg"), os.path.join(img_dir, "dog labrador.jpg"), os.path.join(img_dir, "dog shih tzu.jpg")],
+            "cat": [os.path.join(img_dir, "cat mainecoon.jpg"), os.path.join(img_dir, "cat siamese.jpg"), os.path.join(img_dir, "cat siamese_2.jpg")],
+            "bird": [os.path.join(img_dir, "bird budgerigar.jpg"), os.path.join(img_dir, "bird canary.jpg"), os.path.join(img_dir, "bird lovebird.jpg")],
+            "rabbit": [os.path.join(img_dir, "rabbit dutch rabbit.jpg"), os.path.join(img_dir, "rabbit flemish giant.jpg"), os.path.join(img_dir, "rabbit lionhead.jpg")]
+        }
 
         pet_objs = []
         for i in range(20):
-            species = random.choice(["dog", "cat"])
-            breed = random.choice(breeds_dogs) if species == "dog" else random.choice(breeds_cats)
+            species = random.choice(["dog", "cat", "bird", "rabbit"])
+            if species == "dog":
+                breed = random.choice(breeds_dogs)
+            elif species == "cat":
+                breed = random.choice(breeds_cats)
+            elif species == "bird":
+                breed = random.choice(breeds_birds)
+            else:
+                breed = random.choice(breeds_rabbits)
+                
             gender = random.choice(["male", "female"])
             name = random.choice(pet_names) + f" {i}"
             
@@ -80,7 +105,7 @@ class Command(BaseCommand):
                 "breed": breed,
                 "gender": gender,
                 "age": random.randint(1, 10),
-                "weight": round(random.uniform(2.0, 25.0), 1),
+                "weight": round(random.uniform(2.0, 25.0), 1) if species in ['dog', 'cat'] else round(random.uniform(0.5, 3.0), 1),
                 "color": random.choice(colors),
                 "vaccination_status": random.choice(["Fully Vaccinated", "Partially Vaccinated", "Not Vaccinated"]),
                 "adoption_fee": round(random.uniform(0.0, 1500.0), 2),
@@ -92,9 +117,15 @@ class Command(BaseCommand):
                 "posted_by": admin_user
             }
             
-            pet, created = Pet.objects.get_or_create(name=p_data["name"], defaults=p_data)
-            if created:
-                pet.personality_tags.set(random.sample(tag_objects, k=random.randint(2, 4)))
+            pet = Pet.objects.create(**p_data)
+            
+            # Attach photo
+            img_path = random.choice(species_images[species])
+            if os.path.exists(img_path):
+                with open(img_path, 'rb') as f:
+                    pet.photo.save(os.path.basename(img_path), File(f), save=True)
+            
+            pet.personality_tags.set(random.sample(tag_objects, k=random.randint(2, 4)))
             pet_objs.append(pet)
 
         # Create Adoption Applications for all non-staff users
