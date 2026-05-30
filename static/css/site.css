@@ -5662,3 +5662,42 @@ textarea:focus {
   line-height: 1.6;
   color: var(--text);
 }
+
+/* --- Browse Pets Page Full Width Layout Overrides --- */
+.dashboard.available-pets-page {
+  grid-template-columns: 1fr !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.available-pets-page .dashboard-main {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Responsive Pets Grid */
+.available-pets-page .pets-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 20px !important;
+  width: 100% !important;
+}
+
+@media (max-width: 1400px) {
+  .available-pets-page .pets-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .available-pets-page .pets-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .available-pets-page .pets-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

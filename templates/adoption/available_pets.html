@@ -265,33 +265,6 @@
       </section>
     </div>
   </div>
-
-  <aside class="dashboard-side">
-    <section class="metric-card">
-      <p class="eyebrow">Quick Stats</p>
-      <div class="stat-stack">
-        <div><strong>{{ paginator.count }}</strong><span>Available Now</span></div>
-      </div>
-    </section>
-
-    <section class="tip-card">
-      <p class="eyebrow">Adoption Tip</p>
-      <h2>Take your time choosing.</h2>
-      <p>Look at each pet's personality tags and profile to find a great match for your home.</p>
-    </section>
-
-    {% if not user.is_authenticated %}
-      <section class="tip-card">
-        <p class="eyebrow">Ready to Apply?</p>
-        <h2>Create your adopter account.</h2>
-        <p>When you find the right pet, log in or register to submit your application and track its status.</p>
-        <div class="actions">
-          <a class="button primary" href="{% url 'register' %}">Register</a>
-          <a class="button" href="{% url 'login' %}?role=user">Login</a>
-        </div>
-      </section>
-    {% endif %}
-  </aside>
 </section>
 <div class="pet-preview-overlay" id="petPreviewOverlay" hidden>
   <div class="pet-preview-tab" role="dialog" aria-modal="true" aria-labelledby="petPreviewTitle">
